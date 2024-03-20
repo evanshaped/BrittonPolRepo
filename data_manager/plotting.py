@@ -1,5 +1,5 @@
-from dataset import Dataset
-from switch import SwitchSet
+from .dataset import Dataset
+from .switch import SwitchSet
 
 ### Plots rotation angles for each of two datasets that have had their PTFs calculated
 def plot_rot_angle(ds_1, ds_2, birds_eye=True, sample_range=None):

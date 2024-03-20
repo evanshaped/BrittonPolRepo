@@ -23,7 +23,8 @@ Now, the input/output default signals are properly matched. When you perform "ds
 The dataset can now be used for further analysis, with the PTF properly calculated.
 """
 
-
+from .dataset import Dataset
+from .switch import SwitchSet
 
 class IOPair:
     def __init__(self, filepath_output, filepath_input):

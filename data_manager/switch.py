@@ -1,6 +1,6 @@
 BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
-from dataset import Dataset
+from .dataset import Dataset
 import numpy as np
 from numpy import linalg as la
 import matplotlib.pyplot as plt
