@@ -114,7 +114,7 @@ class Dataset:
     radians = 'Rad'; degrees = 'Degrees'
     ANGLE_UNITS_IS_RAD = False
     angle_units = radians if ANGLE_UNITS_IS_RAD else degrees
-    DEGREES_COLUMNS = ["Azimuth", "AzimuthAvg", "AzimuthStd", "Ellipticity", "EllipticityAvg", "EllipticityStd", "angleSimMetric", "rotAngle", "angleDif"]
+    DEGREES_COLUMNS = ["Azimuth", "AzimuthAvg", "AzimuthStd", "Ellipticity", "EllipticityAvg", "EllipticityStd", "angleSimMetric", "rotAngle", "angleDif", "rotAngleRolling"]
     RADIANS_COLUMNS = []
     UNITS = {'S0':stokes_units, 'S1':stokes_units, 'S2':stokes_units, 'S3':stokes_units, 
                       'S0Avg':stokes_units, 'S1Avg':stokes_units, 'S2Avg':stokes_units, 'S3Avg':stokes_units, 
@@ -130,7 +130,7 @@ class Dataset:
                       'DOPAvg':'%', 'PowerAvg':'mW',
                       'DOPStd':'%', 'PowerStd':'mW',
                       'distSimMetric':unitless, 'angleSimMetric':angle_units, 
-                      'rotAngle':angle_units, 'angleDif':angle_units}
+                      'rotAngle':angle_units, 'angleDif':angle_units, 'rotAngleRolling':angle_units}
     
     def __init__(self, filename, set_range=None, time_offset=0.0, skip_default_signal_baseline=True):
         self.title = filename[filename.rindex("PAX"):-4]

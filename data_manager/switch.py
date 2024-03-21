@@ -5,9 +5,10 @@ import numpy as np
 from numpy import linalg as la
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 
 class SwitchSet(Dataset):
-    STOKES_PTF_DF_COLUMNS = ['EstTime', 'basesMatrix', 'sig1Stokes', 'sig2Stokes', 'axis','rotAngle', 'angleDif']
+    STOKES_PTF_DF_COLUMNS = ['EstTime', 'basesMatrix', 'sig1Stokes', 'sig2Stokes', 'axis', 'rotAngle', 'angleDif', 'rotAngleRolling', 'WasReset']
     
     def __init__(self, filename, set_range=None, time_offset=0.0, skip_default_signal_baseline=True):
         super().__init__(filename, set_range, time_offset, skip_default_signal_baseline)
@@ -23,6 +24,7 @@ class SwitchSet(Dataset):
         self.assign_by = None
         self.angle_threshold_deg = None
         self.reset_times = None
+        self.reset_by_rolling = None
         #self.metrics=['dist','angle']
     
     ### Plots specified parameter over time (from the raw data)
@@ -160,13 +162,16 @@ class SwitchSet(Dataset):
             if plot_param in self.signal_1_df.columns:   # Plot from separated signals
                 if plot_signal is None or plot_signal == 1:
                     BE_ax.plot(self.signal_1_df['EstTime'], Dataset.get_correct_units(self.signal_1_df[plot_param]), label=plot_param+" 1", \
-                               linestyle='-', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[0])
+                               alpha=0.5, linestyle='-', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[0])
                 if plot_signal is None or plot_signal == 2:
                     BE_ax.plot(self.signal_2_df['EstTime'], Dataset.get_correct_units(self.signal_2_df[plot_param]), label=plot_param+" 2", \
-                               linestyle='-', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[1])
+                               alpha=0.5, linestyle='-', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[1])
             else:   # Plot from ptf
                 BE_ax.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df[plot_param]), label=plot_param, \
-                               linestyle='-', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[0])
+                               alpha=0.5, linestyle='-', linewidth=0.4, marker='', markersize=0.5, color=custom_palette[0])
+                if plot_param=='rotAngle':   # If plotting rotAngle, also plot rolling average
+                    BE_ax.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling', \
+                               linestyle='-', linewidth=0.8, marker='', markersize=0.5, color=custom_palette[2])
                 if self.angle_threshold_deg is not None: BE_ax.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
                 if self.reset_times is not None and len(self.reset_times) > 0:
                         for time in self.reset_times:
@@ -180,13 +185,16 @@ class SwitchSet(Dataset):
                 if plot_param_2 in self.signal_1_df.columns:
                     if plot_signal is None or plot_signal == 1:
                         BE_ax2.plot(self.signal_1_df['EstTime'], Dataset.get_correct_units(self.signal_1_df[plot_param_2]), label=plot_param_2+" 1", \
-                                    linestyle='--', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[9])
+                                    alpha=0.5, linestyle='--', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[9])
                     if plot_signal is None or plot_signal == 2:
                         BE_ax2.plot(self.signal_2_df['EstTime'], Dataset.get_correct_units(self.signal_2_df[plot_param_2]), label=plot_param_2+" 2", \
-                                    linestyle='--', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[8])
+                                    alpha=0.5, linestyle='--', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[8])
                 else: # Plot from ptf
                     BE_ax2.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df[plot_param_2]), label=plot_param_2, \
-                                linestyle='--', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[9])
+                                alpha=0.5, linestyle='--', linewidth=0.4, marker='', markersize=0.5, color=custom_palette[9])
+                    if plot_param_2=='rotAngle':   # If plotting rotAngle, also plot rolling average
+                        BE_ax2.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling', \
+                                   linestyle='--', linewidth=0.8, marker='', markersize=0.5, color=custom_palette[7])
                     if self.angle_threshold_deg is not None: BE_ax2.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
                     if self.reset_times is not None and len(self.reset_times) > 0:
                         for time in self.reset_times:
@@ -223,6 +231,9 @@ class SwitchSet(Dataset):
             else:   # Plot from ptf
                 ZI_ax.plot(self.stokes_ptf_df['EstTime'],Dataset.get_correct_units(self.stokes_ptf_df[plot_param]),label=plot_param, \
                            linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[0])
+                if plot_param=='rotAngle':   # If plotting rotAngle, also plot rolling average
+                    ZI_ax.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling', \
+                               linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[2])
                 if self.angle_threshold_deg is not None: ZI_ax.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
                 if self.reset_times is not None and len(self.reset_times) > 0:
                         for time in self.reset_times:
@@ -244,6 +255,9 @@ class SwitchSet(Dataset):
                 else:   # Plot from ptf
                     ZI_ax2.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df[plot_param_2]), label=plot_param_2, \
                                 linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[9])
+                    if plot_param_2=='rotAngle':   # If plotting rotAngle, also plot rolling average
+                        ZI_ax2.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling', \
+                               linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[7])
                     if self.angle_threshold_deg is not None: ZI_ax2.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
                     if self.reset_times is not None and len(self.reset_times) > 0:
                         for time in self.reset_times:
@@ -995,7 +1009,7 @@ class SwitchSet(Dataset):
         angle_between_current_stokes = SwitchSet.angle_between_SOPs(signal_1_current_stokes, signal_2_current_stokes)
 
         return pd.Series([time, current_matrix, signal_1_current_stokes, signal_2_current_stokes, \
-                          axis, angle, angle_between_current_stokes],
+                          axis, angle, angle_between_current_stokes, 0.0, False],
                          index=SwitchSet.STOKES_PTF_DF_COLUMNS)
     
     ### Constructs 3 orthonormal bases given two linearly independent vectors
@@ -1031,17 +1045,18 @@ class SwitchSet(Dataset):
     ### For the other channel (the one we want to disturb as infrequently as possible), use the option reference=[t1, t2, ...]
     ### where reference is the list of reset times recorded from the witness beam channel. The method will reset the reference
     ### SOPs at those times (or as we pass them), no matter what the rotation angle is doing.
-    def calc_stokes_ptf(self, reference=None, switch_inputs=False, angle_threshold_deg=10, reset_delay=0, print_process=False):
+    def calc_stokes_ptf(self, reference=None, switch_inputs=False, angle_threshold_deg=10, reset_delay=0, reset_by_rolling=True, rolling_pts=5, print_process=False):
         if self.signal_1_df is None:
             print('Error: averages not yet calculated')
             return
-        
+
         # Determine what criteria for the reference SOPs we're using
         resetting_approach = False   # Witness beam channel
         reset_times_given = False   # Other channel
         if (reference is None):
             print("Using \"resetting reference SOPs\" approach with threshold = {:.1f} degrees".format(angle_threshold_deg))
             resetting_approach = True
+            self.reset_by_rolling = reset_by_rolling
             self.angle_threshold_deg = angle_threshold_deg
             signal_1_input_stokes, signal_2_input_stokes = self.first_stokes()
             self.signal_1_input_stokes = signal_1_input_stokes
@@ -1066,7 +1081,8 @@ class SwitchSet(Dataset):
             self.signal_2_input_stokes = signal_2_input_stokes
         else:
             print("No approach found; provide proper \"reference\" parameter")
-
+        print("Averaging rotAngle using " + BOLD_ON + "{:d} rolling points".format(rolling_pts) + BOLD_OFF)
+        
         # First reference SOPs
         reference_matrix = np.column_stack(SwitchSet.construct_orthonormal_bases(signal_1_input_stokes, signal_2_input_stokes))
 
@@ -1075,18 +1091,40 @@ class SwitchSet(Dataset):
         rows = list(zip(self.signal_1_df.iterrows(), self.signal_2_df.iterrows()))
         stokes_ptf_rows = []  # List to store the Series objects
         reset_times = []   # Times at which we reset the reference
+        current_segment_values = []   # Initialize a list to temporarily store values of the current segment
         for (i1, row1), (i2, row2) in rows:
             result_row = SwitchSet.calc_stokes_rotation(reference_matrix, row1, row2)  # Calculate rotation matrix
-            stokes_ptf_rows.append(result_row)
+            current_segment_values.append(result_row["rotAngle"])
+            if len(current_segment_values) <= rolling_pts:
+                result_row["rotAngleRolling"] = sum(current_segment_values) / len(current_segment_values)
+            else:
+                result_row["rotAngleRolling"] = sum(current_segment_values[-rolling_pts:]) / rolling_pts
 
-            # If we're resetting based on rotAngle or given reset times, check these conditions
-            if (resetting_approach and result_row['rotAngle'] > angle_threshold_deg) \
-                or (reset_times_given and len(reset_times) < len(reference) and result_row["EstTime"] > reference[len(reset_times)]+reset_delay):
-                # Reset the reference SOPs
+            # Check these conditions for whether its time to reset
+            time_to_reset=False
+            if resetting_approach:
+                # If resetting by raw rotAngle values, check threshold
+                if not reset_by_rolling and result_row['rotAngle'] > angle_threshold_deg:
+                    time_to_reset=True
+                # If resettign by rolling rotAngle average, check threshold
+                if reset_by_rolling and result_row['rotAngleRolling'] > angle_threshold_deg:
+                    time_to_reset=True
+            # If resetting by provided reset times, check if we've reached (exceeded) the next reset time
+            elif reset_times_given and len(reset_times) < len(reference) and result_row["EstTime"] > reference[len(reset_times)]+reset_delay:
+                time_to_reset=True
+
+            if time_to_reset:
+                # This row marks a reset; reset the reference SOPs
+                result_row["WasReset"] = True   # Mark reset as True; default is False
+                current_segment_values = []
                 reset_times.append(result_row["EstTime"])
                 signal_1_reference_stokes = result_row['sig1Stokes']
                 signal_2_reference_stokes = result_row['sig2Stokes']
                 reference_matrix = np.column_stack(SwitchSet.construct_orthonormal_bases(signal_1_reference_stokes, signal_2_reference_stokes))
+            
+            stokes_ptf_rows.append(result_row)
+        
+        # Print some stuff
         if resetting_approach or reset_times_given: print(BOLD_ON+"Reference matrix was reset {:d} times".format(len(reset_times))+BOLD_OFF)
         if (resetting_approach or reset_times_given) and print_process:
             for i in range(0,min(10,len(reset_times))):

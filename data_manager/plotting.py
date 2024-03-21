@@ -1,8 +1,10 @@
 from .dataset import Dataset
 from .switch import SwitchSet
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 ### Plots rotation angles for each of two datasets that have had their PTFs calculated
-def plot_rot_angle(ds_1, ds_2, birds_eye=True, sample_range=None):
+def plot_rot_angle(ds_1, ds_2, birds_eye=True, sample_range=None, plot_raw=True):
     if ds_1.signal_1_df is None or ds_2.signal_1_df is None:
         print('Error: averages not yet calculated')
         return
@@ -19,15 +21,19 @@ def plot_rot_angle(ds_1, ds_2, birds_eye=True, sample_range=None):
         custom_palette = sns.color_palette("dark")
         
         # Plot rotAngle from ds 1
-        BE_ax.plot(ds_1.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_1.stokes_ptf_df[plot_param]), label=plot_param+' ds 1', \
-                       linestyle='-', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[0])
+        if plot_raw: BE_ax.plot(ds_1.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_1.stokes_ptf_df[plot_param]), label=plot_param+' ds 1', \
+                       alpha=0.5, linestyle='-', linewidth=0.4, marker='', markersize=0.5, color=custom_palette[0])
+        BE_ax.plot(ds_1.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_1.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling'+' ds 1', \
+                       linestyle='-', linewidth=0.8, marker='', markersize=0.5, color=custom_palette[2])
         if ds_1.angle_threshold_deg is not None: BE_ax.axhline(y=Dataset.get_correct_units(ds_1.angle_threshold_deg), color='red', linewidth=1)
         if ds_1.reset_times is not None and len(ds_1.reset_times) > 0:
             for time in ds_1.reset_times:
                 BE_ax.axvline(time, color = 'red', linewidth=0.5)
         # Plot rotAngle from ds 2
-        BE_ax.plot(ds_2.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_2.stokes_ptf_df[plot_param]), label=plot_param+' ds 2', \
-                       linestyle='-', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[1])
+        if plot_raw: BE_ax.plot(ds_2.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_2.stokes_ptf_df[plot_param]), label=plot_param+' ds 2', \
+                       alpha=0.5, linestyle='-', linewidth=0.4, marker='', markersize=0.5, color=custom_palette[1])
+        BE_ax.plot(ds_2.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_2.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling'+' ds 2', \
+                       linestyle='-', linewidth=0.8, marker='', markersize=0.5, color=custom_palette[3])
         if ds_2.angle_threshold_deg is not None: BE_ax.axhline(y=Dataset.get_correct_units(ds_2.angle_threshold_deg), color='orange', linewidth=1)
         if ds_2.reset_times is not None and len(ds_2.reset_times) > 0:
             for time in ds_2.reset_times:
@@ -50,16 +56,20 @@ def plot_rot_angle(ds_1, ds_2, birds_eye=True, sample_range=None):
         # Zoomed In plot
         ZI_fig, ZI_ax = plt.subplots(figsize=(12,3))
         # Plot rotAngle from ds 1
-        ZI_ax.plot(ds_1.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_1.stokes_ptf_df[plot_param]), label=plot_param+' ds 1', \
+        if plot_raw: ZI_ax.plot(ds_1.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_1.stokes_ptf_df[plot_param]), label=plot_param+' ds 1', \
                    linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[0])
+        ZI_ax.plot(ds_1.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_1.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling'+' ds 1', \
+                   linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[2])
         if ds_1.angle_threshold_deg is not None: ZI_ax.axhline(y=Dataset.get_correct_units(ds_1.angle_threshold_deg), color='red', linewidth=1)
         if ds_1.reset_times is not None and len(ds_1.reset_times) > 0:
             for time in ds_1.reset_times:
                 if sample_range[0] <= time <= sample_range[1]:
                     ZI_ax.axvline(time, color = 'red', linewidth=0.5)
         # Plot rotAngle from ds 2
-        ZI_ax.plot(ds_2.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_2.stokes_ptf_df[plot_param]), label=plot_param+' ds 2', \
+        if plot_raw: ZI_ax.plot(ds_2.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_2.stokes_ptf_df[plot_param]), label=plot_param+' ds 2', \
                    linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[1])
+        ZI_ax.plot(ds_2.stokes_ptf_df['EstTime'], Dataset.get_correct_units(ds_2.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling'+' ds 2', \
+                   linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[3])
         if ds_2.angle_threshold_deg is not None: ZI_ax.axhline(y=Dataset.get_correct_units(ds_2.angle_threshold_deg), color='orange', linewidth=1)
         if ds_2.reset_times is not None and len(ds_2.reset_times) > 0:
             for time in ds_2.reset_times:
