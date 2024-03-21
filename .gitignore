@@ -1,1 +1,4 @@
 .ipynb_checkpoints/
+.virtual_documents/
+data_manager/*
+!data_manager/*.py
