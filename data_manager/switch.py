@@ -1137,6 +1137,13 @@ class SwitchSet(Dataset):
         self.stokes_ptf_df = pd.DataFrame(stokes_ptf_rows)
         self.stokes_ptf_df['EstTime'] = self.stokes_ptf_df['EstTime'].astype(float)
 
+        # Calculate the difference between each rotAngle value
+        # This may be a random walk, and may be useful if plotted on a histogram or plugged into ADev
+        self.stokes_ptf_df['rotAngleDif'] = self.stokes_ptf_df['rotAngle'].diff()
+        for i in range(len(self.stokes_ptf_df) - 1):  # -1 because we'll look at the next row inside the loop
+            if self.stokes_ptf_df.loc[i, 'WasReset']:
+                self.stokes_ptf_df.loc[i + 1, 'rotAngleDif'] = np.nan
+
         self.reset_times = reset_times
         return reset_times
     

@@ -2,6 +2,11 @@ from .dataset import Dataset
 from .switch import SwitchSet
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
+#import pandas as pd
+from scipy.optimize import curve_fit
+BOLD_ON = "\033[1m"
+BOLD_OFF = "\033[0m"
 
 ### Plots rotation angles for each of two datasets that have had their PTFs calculated
 def plot_rot_angle(ds_1, ds_2, birds_eye=True, sample_range=None, plot_raw=True):
@@ -87,3 +92,48 @@ def plot_rot_angle(ds_1, ds_2, birds_eye=True, sample_range=None, plot_raw=True)
     
     #return BE_fig, ZI_fig
     return
+
+### For a switch set with calculated point-to-reference rotAngleDif values, fit a gaussian distribution and plot.
+### Returns popt, perr (optimal parameters and uncertainties)
+def ptr_walk_hist(ds_switch, bins=150):
+    # Gaussian function
+    def gauss(x, mu, sigma, A):
+        return A * np.exp(-0.5 * ((x - mu) / sigma)**2)
+    
+    # Histogram data
+    hist_data = ds_switch.stokes_ptf_df['rotAngleDif'].dropna()
+    bin_list = np.linspace(min(hist_data), max(hist_data), bins)
+    hist, bin_edges = np.histogram(hist_data, bins=bin_list)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    
+    # Fit the Gaussian function to the histogram data
+    popt, pcov = curve_fit(gauss, bin_centers, hist, p0=[np.mean(hist_data), np.std(hist_data), 1])
+    # Extracting the uncertainties (standard errors) of the fitted parameters
+    perr = np.sqrt(np.diag(pcov))
+
+    time_str = Dataset.gen_time_str(ds_switch.df)
+    print(BOLD_ON + '----- Gauss fit params | {:s} | {:s} -----'.format(ds_switch.title, time_str) + BOLD_OFF)
+    parameter_names = ['mu', 'sigma', 'A']
+    for param, uncertainty, name in zip(popt, perr, parameter_names):
+        print(f"\t{name} = {param:.5f} ± {uncertainty:.5f}")
+    print(BOLD_ON + '-----------------------------------------------------------' + BOLD_OFF)
+    
+    # Plot the histogram and the fit
+    fig, ax = plt.subplots(figsize=(12, 3))
+    ax.hist(hist_data, bins=bin_list, alpha=0.6, color='blue')
+    ax.plot(bin_centers, gauss(bin_centers, *popt), 'orange', linewidth=2)
+    
+    # Adding a vertical red line at the mean
+    ax.axvline(x=popt[0], color='red', lw=2, label=f'Mean: {popt[0]:.5f}')
+    # Adding a horizontal purple line for the standard deviation
+    ax.hlines(popt[2]*0.05, popt[0], popt[0] + popt[1], color='purple', lw=2, label=f'STD: {popt[1]:.5f}')
+    
+    ax.set_title('rotAngleDif hist with Gauss Fit | {:s} | {:s}'.format(ds_switch.title, time_str), fontweight='bold')
+    ax.set_xlabel('rotAngleDif')
+    ax.set_ylabel('Frequency')
+    ax.legend()
+    ax.grid(True)
+    
+    display(fig); plt.close(fig)
+
+    return (ds_switch.title, time_str, popt, perr)
