@@ -138,6 +138,46 @@ def ptr_walk_hist(ds_switch, bins=150):
 
     return (ds_switch.title, time_str, popt, perr)
 
+### For a switch set with calculated point-to-reference rotAngleDif values, fit a gaussian distribution and plot.
+### Returns popt, perr (optimal parameters and uncertainties)
+# not done!!!!!
+def ptr_walk_hist_double(ds_switch, fig, ax, color, time_range=None, bins=150):
+    # Gaussian function
+    def gauss(x, mu, sigma, A):
+        return A * np.exp(-0.5 * ((x - mu) / sigma)**2)
+    
+    # Histogram data
+    stokes_df = ds_switch.stokes_ptf_df
+    if time_range is not None: stokes_df = stokes_df[(stokes_df['EstTime'] > time_range[0]) & (stokes_df['EstTime'] < time_range[1])]
+    hist_data = stokes_df['rotAngleDif'].dropna()
+    bin_list = np.linspace(min(hist_data), max(hist_data), bins)
+    hist, bin_edges = np.histogram(hist_data, bins=bin_list)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    
+    # Fit the Gaussian function to the histogram data
+    popt, pcov = curve_fit(gauss, bin_centers, hist, p0=[np.mean(hist_data), np.std(hist_data), 1])
+    # Extracting the uncertainties (standard errors) of the fitted parameters
+    perr = np.sqrt(np.diag(pcov))
+
+    time_str = Dataset.gen_time_str(ds_switch.df)
+    print(BOLD_ON + '----- Gauss fit params | {:s} | {:s} -----'.format(ds_switch.title, time_str) + BOLD_OFF)
+    parameter_names = ['mu', 'sigma', 'A']
+    for param, uncertainty, name in zip(popt, perr, parameter_names):
+        print(f"\t{name} = {param:.5f} ± {uncertainty:.5f}")
+    print(BOLD_ON + '-----------------------------------------------------------' + BOLD_OFF)
+    
+    # Plot the histogram and the fit
+    
+    ax.hist(hist_data, bins=bin_list, alpha=0.6, color='blue')
+    ax.plot(bin_centers, gauss(bin_centers, *popt), 'orange', linewidth=2)
+    
+    # Adding a vertical red line at the mean
+    ax.axvline(x=popt[0], color='red', lw=2, label=f'Mean: {popt[0]:.5f}')
+    # Adding a horizontal purple line for the standard deviation
+    ax.hlines(popt[2]*0.05, popt[0], popt[0] + popt[1], color='purple', lw=2, label=f'STD: {popt[1]:.5f}')
+
+    return (ds_switch.title, time_str, popt, perr)
+
 ### Plots adev plots on same plot               ...plot
 ### params_arr is array of tuples
 ### Each tuple is: (averaging_times, allan_dev, allan_dev_error, number_of_samples, plot_label)
