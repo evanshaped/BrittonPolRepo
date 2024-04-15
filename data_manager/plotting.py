@@ -198,3 +198,34 @@ def plot_adev(params_arr):
     ADev_fig.tight_layout()
     display(ADev_fig); plt.close(ADev_fig)
     #plt.show()
+
+# Plots adev all on one plot, in different colors
+def plot_adev_color(params_arr):
+    def create_red_to_blue_palette(n=20):
+        # Red is (1, 0, 0) and Blue is (0, 0, 1)
+        red = np.array([1, 0, 0])
+        blue = np.array([0, 0, 1])
+        
+        # Generate a list of colors between red and blue
+        palette = [tuple((1 - i/(n-1)) * red + i/(n-1) * blue) for i in range(n)]
+        return palette
+    
+    # Generate the palette
+    color_palette = create_red_to_blue_palette(len(params_arr))
+
+    ADev_fig,ADev_ax = plt.subplots(figsize=(12,4))
+    for i, (taus2,ad,ade,_,set_title,time) in enumerate(params_arr):
+        ADev_ax.errorbar(taus2, ad, yerr=ade, label=time, color=color_palette[i])
+    title="ADev signal stability | {:s}".format(set_title)
+    ADev_ax.set_xscale("log")
+    ADev_ax.set_yscale("log")
+    ADev_ax.set_xlabel('Tau [s]')
+    ADev_ax.set_ylabel('Allan Deviation')
+    ADev_ax.set_title(title)
+    ADev_ax.grid(True)
+    #ADev_ax.legend(loc='upper left')
+    #ADev_ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ADev_ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=2)
+    ADev_fig.tight_layout()
+    #display(ADev_fig); plt.close(ADev_fig)
+    plt.show()
