@@ -179,12 +179,13 @@ def ptr_walk_hist_double(ds_switch, fig, ax, color, time_range=None, bins=150):
     return (ds_switch.title, time_str, popt, perr)
 
 ### Plots adev plots on same plot               ...plot
-### params_arr is array of tuples
+### params_arr is array of tuples, one tuple for each allan deviation plot
 ### Each tuple is: (averaging_times, allan_dev, allan_dev_error, number_of_samples, plot_label)
-def plot_adev(params_arr, title='Signal Stability'):
+def plot_adev(params_arr):
     ADev_fig,ADev_ax = plt.subplots(figsize=(12,4))
-    for taus2,ad,ade,_,label in params_arr:
-        ADev_ax.errorbar(taus2, ad, yerr=ade, label=label)
+    for taus2,ad,ade,_,set_title,time in params_arr:
+        ADev_ax.errorbar(taus2, ad, yerr=ade, label=time)
+    title="ADev signal stability | {:s}".format(set_title)
     ADev_ax.set_xscale("log")
     ADev_ax.set_yscale("log")
     ADev_ax.set_xlabel('Tau [s]')
@@ -196,3 +197,4 @@ def plot_adev(params_arr, title='Signal Stability'):
     ADev_ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=2)
     ADev_fig.tight_layout()
     display(ADev_fig); plt.close(ADev_fig)
+    #plt.show()
