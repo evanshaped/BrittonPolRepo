@@ -6,6 +6,8 @@ from numpy import linalg as la
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+import datetime
+import allantools
 
 class SwitchSet(Dataset):
     STOKES_PTF_DF_COLUMNS = ['EstTime', 'basesMatrix', 'sig1Stokes', 'sig2Stokes', 'axis', 'rotAngle', 'angleDif', 'rotAngleRolling', 'WasReset']
@@ -408,6 +410,8 @@ class SwitchSet(Dataset):
             # If desired, we'll show these histograms
             display(offset_fig); plt.close(offset_fig)
             print('\n')
+        else:
+            plt.close(offset_fig)
         return mean_offset
     
     @staticmethod
@@ -492,6 +496,8 @@ class SwitchSet(Dataset):
                     print('displaying jump_fig for switch parameter = {:s}\n'.format(switch_param_iter))
                     display(jump_fig_iter); plt.close(jump_fig_iter)
                     print('\n')
+                else:
+                    plt.close(jump_fig_iter)
             except Exception as e:
                 # If this switch_param_iter didn't work to detect ZI jumps, we'll add it to the error messages
                 # One parameter not working is expected;
@@ -511,7 +517,7 @@ class SwitchSet(Dataset):
                 left_edge = left_edge_iter
                 right_edge = right_edge_iter
                 max_jump_width = width_iter
-                jump_fig = jump_fig_iter
+                jump_fig = jump_fig_iter # TODO: jump_fig_iter was closed, so jump_fig might not work?
             if print_process: print(BOLD_ON+'--- end of switch param: {:s} ---'.format(switch_param_iter)+BOLD_OFF)
         
         # If neither parameter worked to detect the ZI jumps, we raise an error
@@ -1091,10 +1097,11 @@ class SwitchSet(Dataset):
         rows = list(zip(self.signal_1_df.iterrows(), self.signal_2_df.iterrows()))
         stokes_ptf_rows = []  # List to store the Series objects
         reset_times = []   # Times at which we reset the reference
-        current_segment_values = []   # Initialize a list to temporarily store values of the current segment
+        current_segment_values = []   # Initialize a list to temporarily store values of the current rolling average segment
         for (i1, row1), (i2, row2) in rows:
             result_row = SwitchSet.calc_stokes_rotation(reference_matrix, row1, row2)  # Calculate rotation matrix
-            current_segment_values.append(result_row["rotAngle"])
+            current_segment_values.append(result_row["rotAngle"]) # Add this value to the current rolling average segment
+            # Caclulate rolling average for this point
             if len(current_segment_values) <= rolling_pts:
                 result_row["rotAngleRolling"] = sum(current_segment_values) / len(current_segment_values)
             else:
@@ -1109,6 +1116,7 @@ class SwitchSet(Dataset):
                 # If resettign by rolling rotAngle average, check threshold
                 if reset_by_rolling and result_row['rotAngleRolling'] > angle_threshold_deg:
                     time_to_reset=True
+                # TODO: also reset at the top of every hour, since we'll be cutting the data into hour long sections
             # If resetting by provided reset times, check if we've reached (exceeded) the next reset time
             elif reset_times_given and len(reset_times) < len(reference) and result_row["EstTime"] > reference[len(reset_times)]+reset_delay:
                 time_to_reset=True
@@ -1146,6 +1154,151 @@ class SwitchSet(Dataset):
 
         self.reset_times = reset_times
         return reset_times
+
+    def compute_hourly_segments(self):
+        """
+        Computes hourly segments from the main DataFrame (df) by determining the ranges 
+        of 'TimeElapsed' for each hour, and then maps these to corresponding 'EstTime' ranges 
+        and indices in another DataFrame (stokes_ptf_df).
+    
+        This method initializes and populates a dictionary (`segment_dict`) where each key is a tuple
+        indicating the day and hour (starting from the initial timestamp in `df`), and the value is
+        another dictionary containing ranges for 'TimeElapsed', 'EstTime', and indices in `stokes_ptf_df`.
+    
+        The dictionary provides a structured way to access time segments which encompass full-hour intervals
+        based on the data present in `df`.
+    
+        Returns:
+            dict: A dictionary with keys as (day, hour) tuples and values containing dictionaries with:
+                  - 'TimeElapsedRange': Tuple indicating the start and end of the TimeElapsed range.
+                  - 'EstTimeRange': Tuple indicating the start and end of the EstTime range in `stokes_ptf_df`.
+                  - 'IdxRange': Tuple indicating the start and end indices in `stokes_ptf_df`.
+    
+        Raises:
+            ValueError: If the initial Timestamp data in `df` is not properly formatted or missing.
+        """
+        # Initialize the dictionary to store the results
+        segment_dict = {}
+
+        # Get the initial timestamp from df
+        initial_timestamp = self.df['Timestamp'].iloc[0]
+        initial_day = 0  # Day starts from 0
+        initial_hour = initial_timestamp.hour
+
+        # Calculate the number of seconds from the beginning of the dataset to the start of the first full hour
+        seconds_to_first_full_hour = (60 - initial_timestamp.minute) * 60 - initial_timestamp.second
+        
+        # Iterate over each full hour after the initial time
+        start_time = initial_timestamp + pd.Timedelta(seconds=seconds_to_first_full_hour)
+        end_time = start_time + pd.Timedelta(hours=1)
+        idx = 0
+
+        while end_time <= self.df['Timestamp'].iloc[-1] + pd.Timedelta(hours=1):
+            current_day = (start_time - initial_timestamp).days
+            current_hour = start_time.hour
+            
+            # Find indices in df that are within the current hour segment
+            mask_df = (self.df['Timestamp'] >= start_time) & (self.df['Timestamp'] < end_time)
+            relevant_df = self.df.loc[mask_df]
+            
+            if not relevant_df.empty:
+                # TimeElapsed range
+                timestamp_range = (relevant_df['Timestamp'].min(), relevant_df['Timestamp'].max())
+                time_elapsed_range = (relevant_df['TimeElapsed'].min(), relevant_df['TimeElapsed'].max())
+                df_idx_range = (relevant_df.index.min(), relevant_df.index.max())
+                
+                # Corresponding indices in stokes_ptf_df
+                mask_stokes = (self.stokes_ptf_df['EstTime'] >= time_elapsed_range[0]) & \
+                              (self.stokes_ptf_df['EstTime'] <= time_elapsed_range[1])
+                relevant_stokes = self.stokes_ptf_df.loc[mask_stokes]
+                
+                # EstTime range and indices range
+                est_time_range = (relevant_stokes['EstTime'].min(), relevant_stokes['EstTime'].max())
+                stokes_idx_range = (relevant_stokes.index.min(), relevant_stokes.index.max())
+
+                # Add to dictionary
+                segment_dict[(current_day, current_hour)] = {
+                    'TimestampRange': timestamp_range,
+                    'TimeElapsedRange': time_elapsed_range,
+                    'DfIdxRange': df_idx_range,
+                    'EstTimeRange': est_time_range,
+                    'StokesIdxRange': stokes_idx_range
+                }
+
+            # Move to the next hour
+            start_time += pd.Timedelta(hours=1)
+            end_time += pd.Timedelta(hours=1)
+            idx += 1
+
+        self.segment_dict = segment_dict
+        return segment_dict
+
+    def print_segment_dict(self):
+        """
+        prints keys and values of dataset segments
+        """
+        for (key, value) in self.segment_dict.items():
+            print(key)
+
+    def get_segment_adev(self, key):
+        """
+        Processes a specific segment of `stokes_ptf_df` based on the given key which corresponds
+        to a tuple of (day, hour). This method retrieves the indexed range from `segment_dict`
+        and performs data analysis on the `rotAngleDif` values within this segment.
+    
+        The function drops any NaN values from `rotAngleDif`, calculates the cumulative sum,
+        and then performs Allan deviation analysis on this data. The results, along with other
+        metadata like a generated title and time string, are returned as a tuple.
+    
+        Parameters:
+            key (tuple): A tuple of (day, hour) that identifies the specific hour segment
+                         for which the data should be processed.
+    
+        Returns:
+            tuple: Contains the results of the Allan deviation analysis, the set title,
+                   and a generated time string, structured as:
+                   - Allan deviation results
+                   - Title (str)
+                   - Time string (str)
+    
+        Raises:
+            KeyError: If the provided key does not exist in `segment_dict`.
+            IndexError: If the indexed range is out of bounds for `stokes_ptf_df`.
+        """
+        # Retrieve the index range from the segment_dict for the given key
+        value_dict = self.segment_dict[key]
+        stokes_idx_range = value_dict['StokesIdxRange']
+        
+        # Slice the stokes_ptf_df dataframe using the retrieved index range
+        stokes_ptf_df_slice = self.stokes_ptf_df.iloc[stokes_idx_range[0]:stokes_idx_range[1]+1]
+
+        # Perform the specified operations
+        dif_data = stokes_ptf_df_slice['rotAngleDif'].dropna()
+        walk_data = np.cumsum(dif_data)
+        meas_rate = 1 / (2 * self.switch_time)
+        elm = allantools.oadev(walk_data.values, rate=meas_rate, taus='all', data_type="freq")
+        timestamp_range = value_dict['TimestampRange']
+        time_str_start = timestamp_range[0].strftime('%H:%M')
+        time_str_end = timestamp_range[1].strftime('%H:%M')
+        time = '{:s} - {:s}'.format(time_str_start,time_str_end)
+        set_title = self.title
+        
+        # Combine all parameters into a tuple
+        params = (*elm, set_title, time)
+        
+        return params
+
+    def calc_adev_divided(self):
+        """
+        Divides the dataset into hourly segments using "compute_hourly_segments()", and
+        calculates adev for each segment. params_arr can be plotted using plotting.plot_adev
+        """
+        self.compute_hourly_segments()
+        adev_params_arr = []
+        for key in self.segment_dict.keys():
+            adev_params_arr.append(self.get_segment_adev(key))
+        self.adev_params_arr = adev_params_arr
+        return adev_params_arr
     
     ### Used by calc_jones_ptf()
     ### Func to reverse-engineer the jones matrix from the input polarization and time-dependent output polarizations

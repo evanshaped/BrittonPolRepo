@@ -229,3 +229,70 @@ def plot_adev_color(params_arr):
     ADev_fig.tight_layout()
     #display(ADev_fig); plt.close(ADev_fig)
     plt.show()
+
+### Code for interactively fitting line to log-log ADev plot
+# Onclick code below
+# Plotting code below that
+def onclick(event, ax, fig, line_ref):
+    global ix, iy, coords
+    ix, iy = event.xdata, event.ydata
+
+    # Append clicked coordinates to the list
+    coords.append((ix, iy))
+    #print(f'x = {ix}, y = {iy}')
+
+    # If two points have been selected, calculate slope and intercept
+    if len(coords) == 2:
+        x1, y1 = coords[0]
+        x2, y2 = coords[1]
+        
+        # Calculate slope and intercept in log scale
+        slope = (np.log10(y2) - np.log10(y1)) / (np.log10(x2) - np.log10(x1))
+        intercept = np.log10(y1) - slope * np.log10(x1)
+
+        #print(f'Slope: {slope}')
+        #print(f'Intercept: {intercept}')
+
+        # Plot the line
+        x_fit = np.logspace(np.log10(min(x1, x2)), np.log10(max(x1, x2)), 100)
+        y_fit = 10**(np.log10(x_fit) * slope + intercept)
+
+        # Remove the previous line if it exists
+        if line_ref[0]:
+            line_ref[0].remove()
+
+        # Plot the new line
+        line, = ax.loglog(x_fit, y_fit, 'r--', label=f'Fit: slope={slope:.3f} & int={intercept:.3f}')
+        line_ref[0] = line  # Store reference to the new line
+        ax.legend()
+        fig.canvas.draw()
+
+        # Clear coords for new calculations
+        coords.clear()
+
+# Plotting code
+def fit_adev(taus2, ad, ade, num, set_title, time):
+    global coords  # This declares that 'coords' is a global variable
+    coords = []  # Initialize the list to store clicked coordinates
+    line_ref = [None]  # Store reference to the line object
+
+    title="ADev signal stability | {:s} | {:s}".format(set_title, time)
+
+    ADev_fig,ADev_ax = plt.subplots(figsize=(12,4))
+    ADev_ax.errorbar(taus2, ad, yerr=ade, label=time)
+    ADev_ax.set_xscale("log")
+    ADev_ax.set_yscale("log")
+    ADev_ax.set_xlabel('Tau [s]')
+    ADev_ax.set_ylabel('Allan Deviation')
+    ADev_ax.set_title(title)
+    ADev_ax.grid(True)
+    #ADev_ax.legend(loc='upper left')
+    #ADev_ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ADev_ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=2)
+    #ADev_fig.tight_layout()
+
+    # Connect the click event to the handler
+    cid = ADev_fig.canvas.mpl_connect('button_press_event', lambda event: onclick(event, ADev_ax, ADev_fig, line_ref))
+    
+    #display(ADev_fig); plt.close(ADev_fig)
+    plt.show()
