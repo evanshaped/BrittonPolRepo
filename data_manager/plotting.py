@@ -178,10 +178,10 @@ def ptr_walk_hist_double(ds_switch, fig, ax, color, time_range=None, bins=150):
 
     return (ds_switch.title, time_str, popt, perr)
 
-### Plots adev plots on same plot               ...plot
+### Plots adev plots on same plot
 ### params_arr is array of tuples, one tuple for each allan deviation plot
 ### Each tuple is: (averaging_times, allan_dev, allan_dev_error, number_of_samples, plot_label)
-def plot_adev(params_arr):
+def plot_adev(params_arr, set_title=''):
     ADev_fig,ADev_ax = plt.subplots(figsize=(12,4))
     for taus2,ad,ade,_,set_title,time in params_arr:
         ADev_ax.errorbar(taus2, ad, yerr=ade, label=time)
@@ -200,7 +200,7 @@ def plot_adev(params_arr):
     #plt.show()
 
 # Plots adev all on one plot, in different colors
-def plot_adev_color(params_arr):
+def plot_adev_color(params_arr, set_title=''):
     def create_red_to_blue_palette(n=20):
         # Red is (1, 0, 0) and Blue is (0, 0, 1)
         red = np.array([1, 0, 0])
