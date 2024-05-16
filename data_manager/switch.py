@@ -134,7 +134,9 @@ class SwitchSet(Dataset):
     # sample_range: used to zoom in on a particular time range, e.g. (2000,2050) seconds
     # plot_signal: we have two separated signals; which do we want to show? 1, 2, None (both)
     # time_offset: used by SetPair (allows offsetting of plot by this constant; purely for plotting, no functional purpose)
-    def plot_separated(self,birds_eye=True,plot_param='s1Avg',plot_param_2=None,sample_range=None,plot_signal=None,time_offset=0.0):
+    # plot_rolling: if plot_param=='rotAngle', this will determine whether to plot the rolling average of rotAngle; default is True
+    # enforce_ylim: sometimes for noisy signals the ylim can get messed up; when set to True, this will automatically make the upper ylim 20% above the reset threshold
+    def plot_separated(self,birds_eye=True,plot_param='s1Avg',plot_param_2=None,sample_range=None,plot_signal=None,time_offset=0.0,plot_rolling=True,enforce_ylim=False):
         if self.signal_1_df is None:
             print('Error: averages not yet calculated')
             return
@@ -156,6 +158,12 @@ class SwitchSet(Dataset):
             sample_range = (sample_start+time_offset, sample_end+time_offset)   # Make sure we include the offset
         
         # Plot entire dataset if specified
+        alpha=0.5 # Temporary, for getting good looking plots for 407 report; can be switched back to 1.0
+        markersize=0.5 # was 0.8
+        linestyle_1='-'
+        linestyle_2='--'
+        linewidth=0.6
+        marker=''
         if birds_eye:
             # Birds Eye plot
             BE_fig, BE_ax = plt.subplots(figsize=(12,3))
@@ -164,20 +172,22 @@ class SwitchSet(Dataset):
             if plot_param in self.signal_1_df.columns:   # Plot from separated signals
                 if plot_signal is None or plot_signal == 1:
                     BE_ax.plot(self.signal_1_df['EstTime'], Dataset.get_correct_units(self.signal_1_df[plot_param]), label=plot_param+" 1", \
-                               alpha=0.5, linestyle='-', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[0])
+                               alpha=alpha, linestyle=linestyle_1, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[0])
                 if plot_signal is None or plot_signal == 2:
                     BE_ax.plot(self.signal_2_df['EstTime'], Dataset.get_correct_units(self.signal_2_df[plot_param]), label=plot_param+" 2", \
-                               alpha=0.5, linestyle='-', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[1])
+                               alpha=alpha, linestyle=linestyle_1, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[1])
             else:   # Plot from ptf
                 BE_ax.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df[plot_param]), label=plot_param, \
-                               alpha=0.5, linestyle='-', linewidth=0.4, marker='', markersize=0.5, color=custom_palette[0])
-                if plot_param=='rotAngle':   # If plotting rotAngle, also plot rolling average
+                               alpha=alpha, linestyle=linestyle_1, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[0])
+                if plot_param=='rotAngle' and plot_rolling:   # If plotting rotAngle, also plot rolling average
                     BE_ax.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling', \
-                               linestyle='-', linewidth=0.8, marker='', markersize=0.5, color=custom_palette[2])
-                if self.angle_threshold_deg is not None: BE_ax.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
+                               alpha=alpha, linestyle=linestyle_1, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[2])
+                if self.angle_threshold_deg is not None:
+                    BE_ax.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
+                    if enforce_ylim: BE_ax.set_ylim(-Dataset.get_correct_units(self.angle_threshold_deg)*0.2, Dataset.get_correct_units(self.angle_threshold_deg)*1.2)
                 if self.reset_times is not None and len(self.reset_times) > 0:
                         for time in self.reset_times:
-                            BE_ax.axvline(time, color = 'red', linewidth=0.5)
+                            BE_ax.axvline(time, color = 'red', alpha=0.5, linewidth=0.5)
             BE_ax.set_xlabel('Time [s]')
             BE_ax.set_ylabel('{:s} [{:s}]'.format(plot_param,SwitchSet.UNITS.get(plot_param,'TODO')))
             BE_ax.grid(True)
@@ -187,20 +197,22 @@ class SwitchSet(Dataset):
                 if plot_param_2 in self.signal_1_df.columns:
                     if plot_signal is None or plot_signal == 1:
                         BE_ax2.plot(self.signal_1_df['EstTime'], Dataset.get_correct_units(self.signal_1_df[plot_param_2]), label=plot_param_2+" 1", \
-                                    alpha=0.5, linestyle='--', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[9])
+                                    alpha=alpha, linestyle=linestyle_2, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[9])
                     if plot_signal is None or plot_signal == 2:
                         BE_ax2.plot(self.signal_2_df['EstTime'], Dataset.get_correct_units(self.signal_2_df[plot_param_2]), label=plot_param_2+" 2", \
-                                    alpha=0.5, linestyle='--', linewidth=0.6, marker='', markersize=0.5, color=custom_palette[8])
+                                    alpha=alpha, linestyle=linestyle_2, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[8])
                 else: # Plot from ptf
                     BE_ax2.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df[plot_param_2]), label=plot_param_2, \
-                                alpha=0.5, linestyle='--', linewidth=0.4, marker='', markersize=0.5, color=custom_palette[9])
-                    if plot_param_2=='rotAngle':   # If plotting rotAngle, also plot rolling average
+                                alpha=alpha, linestyle=linestyle_2, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[9])
+                    if plot_param_2=='rotAngle' and plot_rolling:   # If plotting rotAngle, also plot rolling average
                         BE_ax2.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling', \
-                                   linestyle='--', linewidth=0.8, marker='', markersize=0.5, color=custom_palette[7])
-                    if self.angle_threshold_deg is not None: BE_ax2.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
+                                   alpha=alpha, linestyle=linestyle_2, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[7])
+                    if self.angle_threshold_deg is not None:
+                        BE_ax2.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
+                        if enforce_ylim: BE_ax2.set_ylim(-Dataset.get_correct_units(self.angle_threshold_deg)*0.2, Dataset.get_correct_units(self.angle_threshold_deg)*1.2)
                     if self.reset_times is not None and len(self.reset_times) > 0:
                         for time in self.reset_times:
-                            BE_ax2.axvline(time, color = 'red', linewidth=0.5)
+                            BE_ax2.axvline(time, color = 'red', alpha=0.5, linewidth=0.5)
                 BE_ax2.set_ylabel('{:s} [{:s}]'.format(plot_param_2,SwitchSet.UNITS.get(plot_param_2,'TODO')))
                 # lines code is just to get legend working (ChatGPT generated)
                 lines1, labels1 = BE_ax.get_legend_handles_labels()
@@ -219,6 +231,12 @@ class SwitchSet(Dataset):
             display(BE_fig); plt.close(BE_fig)   # Show entire dataset
         
         # If requested, we'll also plot the smaller sample range
+        alpha=0.5 # Temporary, for getting good looking plots for 407 report; can be switched back to 1.0
+        markersize=0.5 # was 0.8
+        linestyle_1='-'
+        linestyle_2='--'
+        linewidth=0.6
+        marker=''
         if sample_range is not None:
             # Zoomed In plot 
             ZI_fig, ZI_ax = plt.subplots(figsize=(12,3))
@@ -226,21 +244,23 @@ class SwitchSet(Dataset):
             if plot_param in self.signal_1_df.columns:   # Plot from separated signals
                 if plot_signal is None or plot_signal == 1:
                     ZI_ax.plot(self.signal_1_df['EstTime'],Dataset.get_correct_units(self.signal_1_df[plot_param]),label=plot_param+" 1", \
-                               linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[0])
+                               alpha=alpha, linestyle=linestyle_1, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[0])
                 if plot_signal is None or plot_signal == 2:
                     ZI_ax.plot(self.signal_2_df['EstTime'],Dataset.get_correct_units(self.signal_2_df[plot_param]),label=plot_param+" 2", \
-                               linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[1])
+                               alpha=alpha, linestyle=linestyle_1, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[1])
             else:   # Plot from ptf
                 ZI_ax.plot(self.stokes_ptf_df['EstTime'],Dataset.get_correct_units(self.stokes_ptf_df[plot_param]),label=plot_param, \
-                           linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[0])
-                if plot_param=='rotAngle':   # If plotting rotAngle, also plot rolling average
+                           alpha=alpha, linestyle=linestyle_1, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[0])
+                if plot_param=='rotAngle' and plot_rolling:   # If plotting rotAngle, also plot rolling average
                     ZI_ax.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling', \
-                               linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[2])
-                if self.angle_threshold_deg is not None: ZI_ax.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
+                               alpha=alpha, linestyle=linestyle_1, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[2])
+                if self.angle_threshold_deg is not None:
+                    ZI_ax.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
+                    if enforce_ylim: ZI_ax.set_ylim(-Dataset.get_correct_units(self.angle_threshold_deg)*0.2, Dataset.get_correct_units(self.angle_threshold_deg)*1.2)
                 if self.reset_times is not None and len(self.reset_times) > 0:
                         for time in self.reset_times:
                             if sample_range[0] <= time <= sample_range[1]:
-                                ZI_ax.axvline(time, color = 'red', linewidth=0.5)
+                                ZI_ax.axvline(time, color = 'red', alpha=0.5, linewidth=0.5)
             ZI_ax.set_xlabel('Time [s]')
             ZI_ax.set_ylabel('{:s} [{:s}]'.format(plot_param,SwitchSet.UNITS.get(plot_param,'TODO')))
             ZI_ax.grid(True)
@@ -250,21 +270,23 @@ class SwitchSet(Dataset):
                 if plot_param_2 in self.signal_1_df.columns:   # Plot from separated signals
                     if plot_signal is None or plot_signal == 1:
                         ZI_ax2.plot(self.signal_1_df['EstTime'], Dataset.get_correct_units(self.signal_1_df[plot_param_2]), label=plot_param_2+" 1", \
-                                    linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[9])
+                                    alpha=alpha, linestyle=linestyle_2, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[9])
                     if plot_signal is None or plot_signal == 2:
                         ZI_ax2.plot(self.signal_2_df['EstTime'], Dataset.get_correct_units(self.signal_2_df[plot_param_2]), label=plot_param_2+" 2", \
-                                    linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[8])
+                                    alpha=alpha, linestyle=linestyle_2, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[8])
                 else:   # Plot from ptf
                     ZI_ax2.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df[plot_param_2]), label=plot_param_2, \
-                                linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[9])
-                    if plot_param_2=='rotAngle':   # If plotting rotAngle, also plot rolling average
+                                alpha=alpha, linestyle=linestyle_2, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[9])
+                    if plot_param_2=='rotAngle' and plot_rolling:   # If plotting rotAngle, also plot rolling average
                         ZI_ax2.plot(self.stokes_ptf_df['EstTime'], Dataset.get_correct_units(self.stokes_ptf_df['rotAngleRolling']), label='rotAngleRolling', \
-                               linestyle='-', linewidth=0.7, marker='+', markersize=0.8, color=custom_palette[7])
-                    if self.angle_threshold_deg is not None: ZI_ax2.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
+                               alpha=alpha, linestyle=linestyle_2, linewidth=linewidth, marker=marker, markersize=markersize, color=custom_palette[7])
+                    if self.angle_threshold_deg is not None:
+                        ZI_ax2.axhline(y=Dataset.get_correct_units(self.angle_threshold_deg), color='red', linewidth=1)
+                        if enforce_ylim: ZI_ax2.set_ylim(-Dataset.get_correct_units(self.angle_threshold_deg)*0.2, Dataset.get_correct_units(self.angle_threshold_deg)*1.2)
                     if self.reset_times is not None and len(self.reset_times) > 0:
                         for time in self.reset_times:
                             if sample_range[0] <= time <= sample_range[1]:
-                                ZI_ax2.axvline(time, color = 'red', linewidth=0.5)
+                                ZI_ax2.axvline(time, color = 'red', alpha=0.5, linewidth=0.5)
                 ZI_ax2.set_ylabel('{:s} [{:s}]'.format(plot_param_2,SwitchSet.UNITS.get(plot_param_2,'TODO')))
                 # lines code is just to get legend working (ChatGPT generated)
                 lines1, labels1 = ZI_ax.get_legend_handles_labels()
@@ -1240,7 +1262,7 @@ class SwitchSet(Dataset):
         for (key, value) in self.segment_dict.items():
             print(key)
 
-    def get_segment_adev(self, key):
+    def get_segment_adev(self, key=None):
         """
         Processes a specific segment of `stokes_ptf_df` based on the given key which corresponds
         to a tuple of (day, hour). This method retrieves the indexed range from `segment_dict`
@@ -1251,8 +1273,8 @@ class SwitchSet(Dataset):
         metadata like a generated title and time string, are returned as a tuple.
     
         Parameters:
-            key (tuple): A tuple of (day, hour) that identifies the specific hour segment
-                         for which the data should be processed.
+            key (tuple): A tuple of (day, hour) that identifies the specific hour segment for which
+                         the data should be processed. If equal to None, will use entire dataset
     
         Returns:
             tuple: Contains the results of the Allan deviation analysis, the set title,
@@ -1265,22 +1287,28 @@ class SwitchSet(Dataset):
             KeyError: If the provided key does not exist in `segment_dict`.
             IndexError: If the indexed range is out of bounds for `stokes_ptf_df`.
         """
-        # Retrieve the index range from the segment_dict for the given key
-        value_dict = self.segment_dict[key]
-        stokes_idx_range = value_dict['StokesIdxRange']
-        
-        # Slice the stokes_ptf_df dataframe using the retrieved index range
-        stokes_ptf_df_slice = self.stokes_ptf_df.iloc[stokes_idx_range[0]:stokes_idx_range[1]+1]
+        if key is not None:
+            # Retrieve the index range from the segment_dict for the given key
+            value_dict = self.segment_dict[key]
+            stokes_idx_range = value_dict['StokesIdxRange']
+            
+            # Slice the stokes_ptf_df dataframe using the retrieved index range
+            stokes_ptf_df_slice = self.stokes_ptf_df.iloc[stokes_idx_range[0]:stokes_idx_range[1]+1]
+        else:
+            stokes_ptf_df_slice = self.stokes_ptf_df
 
         # Perform the specified operations
         dif_data = stokes_ptf_df_slice['rotAngleDif'].dropna()
         walk_data = np.cumsum(dif_data)
         meas_rate = 1 / (2 * self.switch_time)
         elm = allantools.oadev(walk_data.values, rate=meas_rate, taus='all', data_type="freq")
-        timestamp_range = value_dict['TimestampRange']
-        time_str_start = timestamp_range[0].strftime('%H:%M')
-        time_str_end = timestamp_range[1].strftime('%H:%M')
-        time = '{:s} - {:s}'.format(time_str_start,time_str_end)
+        if key is not None:
+            timestamp_range = value_dict['TimestampRange']
+            time_str_start = timestamp_range[0].strftime('%H:%M')
+            time_str_end = timestamp_range[1].strftime('%H:%M')
+            time = '{:s} - {:s}'.format(time_str_start,time_str_end)
+        else:
+            time = Dataset.gen_time_str(self.df)
         set_title = self.title
         
         # Combine all parameters into a tuple
@@ -1434,7 +1462,7 @@ class SwitchSet(Dataset):
         
         ADev_fig = None
         if plot_adev:
-            ADev_fig = StationarySet.plot_adev(adev_arr)
+            ADev_fig = StationarySet.plot_adev(adev_arr, plot_param=plot_param)
 #             ADev_fig,ADev_ax = plt.subplots(figsize=(12,4))
 #             ADev_ax.errorbar(taus2_1, ad_1, yerr=ade_1, label=label_1)
 #             ADev_ax.errorbar(taus2_2, ad_2, yerr=ade_2, label=label_2)

@@ -181,23 +181,24 @@ def ptr_walk_hist_double(ds_switch, fig, ax, color, time_range=None, bins=150):
 ### Plots adev plots on same plot
 ### params_arr is array of tuples, one tuple for each allan deviation plot
 ### Each tuple is: (averaging_times, allan_dev, allan_dev_error, number_of_samples, plot_label)
-def plot_adev(params_arr, set_title=''):
+def plot_adev(params_arr, plot_title=None):
     ADev_fig,ADev_ax = plt.subplots(figsize=(12,4))
     for taus2,ad,ade,_,set_title,time in params_arr:
         ADev_ax.errorbar(taus2, ad, yerr=ade, label=time)
-    title="ADev signal stability | {:s}".format(set_title)
+    if plot_title is None: plot_title = set_title
+    title="Allan Deviation of rotAngle | {:s}".format(plot_title)
     ADev_ax.set_xscale("log")
     ADev_ax.set_yscale("log")
     ADev_ax.set_xlabel('Tau [s]')
-    ADev_ax.set_ylabel('Allan Deviation')
+    ADev_ax.set_ylabel('Allan Deviation of rotAngle [Degrees]')
     ADev_ax.set_title(title)
     ADev_ax.grid(True)
     #ADev_ax.legend(loc='upper left')
     #ADev_ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     ADev_ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=2)
     ADev_fig.tight_layout()
-    display(ADev_fig); plt.close(ADev_fig)
-    #plt.show()
+    #display(ADev_fig); plt.close(ADev_fig)
+    plt.show()
 
 # Plots adev all on one plot, in different colors
 def plot_adev_color(params_arr, set_title=''):
@@ -216,11 +217,11 @@ def plot_adev_color(params_arr, set_title=''):
     ADev_fig,ADev_ax = plt.subplots(figsize=(12,4))
     for i, (taus2,ad,ade,_,set_title,time) in enumerate(params_arr):
         ADev_ax.errorbar(taus2, ad, yerr=ade, label=time, color=color_palette[i])
-    title="ADev signal stability | {:s}".format(set_title)
+    title="ADev signal stability (rotAngle) | {:s}".format(set_title)
     ADev_ax.set_xscale("log")
     ADev_ax.set_yscale("log")
     ADev_ax.set_xlabel('Tau [s]')
-    ADev_ax.set_ylabel('Allan Deviation')
+    ADev_ax.set_ylabel('Allan Deviation of rotAngle [Degrees]')
     ADev_ax.set_title(title)
     ADev_ax.grid(True)
     #ADev_ax.legend(loc='upper left')
@@ -283,7 +284,7 @@ def fit_adev(taus2, ad, ade, num, set_title, time):
     ADev_ax.set_xscale("log")
     ADev_ax.set_yscale("log")
     ADev_ax.set_xlabel('Tau [s]')
-    ADev_ax.set_ylabel('Allan Deviation')
+    ADev_ax.set_ylabel('Allan Deviation of rotAngle [Degrees]')
     ADev_ax.set_title(title)
     ADev_ax.grid(True)
     #ADev_ax.legend(loc='upper left')
