@@ -1,102 +1,3 @@
-"""
-=== Paradigm used for finding transition times ===
-
-
-For any arbitrary signal we intend to measure, there are a few types of deviations we expect
-
-Deviation 1: Outliers
-Data points measured well above the expected maximum polarization or well below the expected minimum. So far as I've seen, these only occur at the transition times and rarely deviate more than 1 times the length of our typical jumps. These may be the result of confusion in the polarimeter as during one measurement cycle, it receives data partly from the first polarization and partly from the second. Maybe a weird behavior in the FFT?
-
-Deviation 2: 'Limbo Points'
-These are data measured in between the two expected polarizations. They separate the jump between the two, dividing the entire length of the jump into two adjacent differences. Unsure whether they occur for the same reason as outliers (confused PAX), or if maybe the PAX averages the two polarizations. Important to note that both Outliers and Limbo Points frequently appear at the same time across multiple paramters (expected).
-
-Deviation 3: Polarization Drift
-An expected deviation resulting from instability in the setup or the PTF of the fiber under test. We encode the maximum expected rate of drift in the 'degree_tolerance' parameter.
-
-Methedology:
-Since transitions occur very suddenly, we take the differences between all adjacent points and an arbitrary difference is likely to represent a transition time if it's magnitude is very large compared to the magnitude of the differences between adjacent points taken from the same signal (near 0).
-
-Considerations:
-
-Outliers (assuming they only occur at transition times) will increase the magnitude of the difference jump at transitions, and add another difference directly after the sharply increased first difference. We will account for this by... TODO
-
-Limbo Points: (decreases magnitude of jumps; we will take differences between every 2 points to ensure each jump is captured. Side effect of roughly doubling number of jumps)
-TODO
-
-Polarization Drift:
-TODO
-"""
-
-
-
-"""
-See PAX [manual](https://www.manualslib.com/manual/1634678/Thorlabs-Pax1000.html?page=39#manual) for details
-- *TimeElapsed*: time elapsed [seconds]
-- *s1, s2, s3*: Stokes params normalized to S0
-- *S0, S1, S2, S3*: raw Stokes params [mW]
-- *Azumith, Ellipticity*: Poincare sphere angles [degrees]
-- *DOP*: degree of polarization [%]
-- *DOCP*: degree of circular polarization [%]
-- *DOLP*: degree of linear polarization [%]
-- *Power*: total power [mW]
-- *Power_pol*: polarized power [mW]
-- *Power_unpol*: unpolarized power [mW]
-- *Power_split_ratio*: see manual
-- *Phase_difference*: see manual
-- *Timestamp*: DateTime Timestamp (hh:mm:ss.µss)
-"""
-
-
-
-"""
-**Dataset(filename, set_range=None)**
-<br>The dataset class is designed to read, store, and perform operations on a CSV dataset from the PAX1000 digital polarimeter.
-Cleaning of the CSV file happens automatically upon initialization of a Dataset instance, and assumes the CSV was output from the PAX1000 software (e.g., there are 7 header rows containing the dataset parameters, 1 row of whitespace, and 1 row of the column names, below which are the data (observations)). See the PAX [manual](https://www.manualslib.com/manual/1634678/Thorlabs-Pax1000.html?page=39#manual) for details on the recorded quantities.
-
-**Parameters**
-<br>*filename : string*
-> Path to PAX csv file to analyze, e.g. "Datasets/my_dataset.csv" if your csv file is in a folder named 'Datasets'
-
-*set_range : None or tuple of two floats, optional*
-> If None, the entire dataset will be analyzed (default behavior).
-> <br>Use tuple of two floats to specify a part of a dataset to read in, given via percentages. This is usually useful to save time while reading in a small portion of a large dataset. For example, set_range=(0.05,0.1) means the chunk of the dataset between 5%-10%.
-"""
-
-
-
-"""
-**Dataset.rate_hist(log=True, bins=50, xmax=None)**
-<br>Visualize the consistency of the PAX's measurement rate. Generate and plot the histogram of time differences between subsequent points.
-
-**Parameters**
-<br>*log : boolean, optional*
-> Whether to make the y-axis log-scale. Emphasizes uncommon occurrences. Default is True.
-
-*bins : int, optional*
-> Increase or decrease bin width depending on size and range of dataset. Default is 50.
-
-*xmax : None or float, optional*
-> Set a maximum on the x-axis (for easier viewing) if there is one outlying point far out on the x-axis.
-"""
-
-
-
-"""
-**Dataset.plot(plot_param='s1', sample_range=None, birds_eye=True)**
-<br>Plot some parameter in the dataset over time.
-
-**Parameters**
-<br>*plot_param : string, optional*
-> The parameter(s) to plot. Default is "AllStokes" (all normalized stokes parameters). Options are:
-> - AllStokes, s1, s2, s3, S0, S1, S2, S3, Azimuth, Ellipticity, DOP, DOCP, DOLP, Power, Power_pol, Power_unpol
-
-*sample_range : None or tuple of two floats, optional*
-> A portion of the plot to zoom in on, given in seconds, e.g. sample_range=(50,100)
-
-*birds_eye : boolean, optional*
-> Whether or not to show the birds eye view
-"""
-
 BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
 import numpy as np
@@ -106,31 +7,22 @@ from datetime import timedelta
 #import os
 #import seaborn as sns
 import warnings
-
+import data_manager.utils.dataframe_management_utils as dataframe_management_utils
 
 class Dataset:
-    stokes_units = 'W/m^2'
-    unitless = 'unitless'
-    radians = 'Rad'; degrees = 'Degrees'
-    ANGLE_UNITS_IS_RAD = False
-    angle_units = radians if ANGLE_UNITS_IS_RAD else degrees
-    DEGREES_COLUMNS = ["Azimuth", "AzimuthAvg", "AzimuthStd", "Ellipticity", "EllipticityAvg", "EllipticityStd", "angleSimMetric", "rotAngle", "angleDif", "rotAngleRolling"]
-    RADIANS_COLUMNS = []
-    UNITS = {'S0':stokes_units, 'S1':stokes_units, 'S2':stokes_units, 'S3':stokes_units, 
-                      'S0Avg':stokes_units, 'S1Avg':stokes_units, 'S2Avg':stokes_units, 'S3Avg':stokes_units, 
-                      'S0Std':stokes_units, 'S1Std':stokes_units, 'S2Std':stokes_units, 'S3Std':stokes_units,
-                      's1':unitless, 's2':unitless, 's3':unitless, 'AllStokes':unitless,
-                      's1Avg':unitless, 's2Avg':unitless, 's3Avg':unitless, 
-                      's1Std':unitless, 's2Std':unitless, 's3Std':unitless, 
-                      'Azimuth':angle_units, 'Ellipticity':angle_units, 
-                      'AzimuthAvg':angle_units, 'EllipticityAvg':angle_units, 
-                      'AzimuthStd':angle_units, 'EllipticityStd':angle_units, 
-                      'NumPoints':'number',
-                      'DOP':'%', 'DOCP':'%', 'DOLP':'%', 'Power':'mW', 'Power_pol':'mW', 'Power_unpol':'mW',
-                      'DOPAvg':'%', 'PowerAvg':'mW',
-                      'DOPStd':'%', 'PowerStd':'mW',
-                      'distSimMetric':unitless, 'angleSimMetric':angle_units, 
-                      'rotAngle':angle_units, 'angleDif':angle_units, 'rotAngleRolling':angle_units}
+    """
+    **Dataset(filename, set_range=None)**
+    <br>The dataset class is designed to read, store, and perform operations on a CSV dataset from the PAX1000 digital polarimeter.
+    Cleaning of the CSV file happens automatically upon initialization of a Dataset instance, and assumes the CSV was output from the PAX1000 software (e.g., there are 7 header rows containing the dataset parameters, 1 row of whitespace, and 1 row of the column names, below which are the data (observations)). See the PAX [manual](https://www.manualslib.com/manual/1634678/Thorlabs-Pax1000.html?page=39#manual) for details on the recorded quantities.
+    
+    **Parameters**
+    <br>*filename : string*
+    > Path to PAX csv file to analyze, e.g. "Datasets/my_dataset.csv" if your csv file is in a folder named 'Datasets'
+    
+    *set_range : None or tuple of two floats, optional*
+    > If None, the entire dataset will be analyzed (default behavior).
+    > <br>Use tuple of two floats to specify a part of a dataset to read in, given via percentages. This is usually useful to save time while reading in a small portion of a large dataset. For example, set_range=(0.05,0.1) means the chunk of the dataset between 5%-10%.
+    """
     
     def __init__(self, filename, set_range=None, time_offset=0.0, skip_default_signal_baseline=True):
         self.title = filename[filename.rindex("PAX"):-4]
@@ -159,23 +51,7 @@ class Dataset:
         self.avg_sample_rate = 1/(df['TimeDiff'][1:].mean())   # See rate_hist for why this code
         return
     
-    @staticmethod
-    def fill_in_range(my_range, my_df):
-        # Fill in the start or end if needed (if None is given instead of value)
-        # If a negative time -t is given, it means t_max-t
-        if my_range[0] is None:
-            my_start = my_df.loc[0, 'TimeElapsed']
-        elif my_range[0] < 0:   # If a negative time -t is given, it means t_max-t
-            my_start = my_df.loc[my_df.shape[0]-1, 'TimeElapsed'] + my_range[0]
-        else:
-            my_start = my_range[0]
-        if my_range[1] is None:
-            my_end = my_df.loc[my_df.shape[0]-1, 'TimeElapsed']
-        elif my_range[1] < 0:   # If a negative time -t is given, it means t_max-t
-            my_end = my_df.loc[my_df.shape[0]-1, 'TimeElapsed'] + my_range[1]
-        else:
-            my_end = my_range[1]
-        return my_start, my_end
+    
     
     # skip_default_signal_baseline = True iff the first 10 seconds (no more than 20) are used only to identify
     # which signal is the default one. These seconds will be automatically cut out. A value of t seconds can also
@@ -263,7 +139,7 @@ class Dataset:
         # This is mutually exclusive with cutting based on percentages given in set_range (see above)
         # We do not reset the timestamps to be 0.000s at the first entry, but we do reset the indices
         if time_range is not None:
-            set_start, set_end = Dataset.fill_in_range(time_range, df)   # automatically fills in missing range vals
+            set_start, set_end = dataframe_management_utils.fill_in_range(time_range, df)   # automatically fills in missing range vals
             set_start += time_offset   # include offset
             set_end += time_offset
             # Throw warning if including out of range data
@@ -302,6 +178,20 @@ class Dataset:
     
     ### Generate histogram of time differences
     def rate_hist(self, log=True, bins=50, xmax=None):
+        """
+        **Dataset.rate_hist(log=True, bins=50, xmax=None)**
+        <br>Visualize the consistency of the PAX's measurement rate. Generate and plot the histogram of time differences between subsequent points.
+        
+        **Parameters**
+        <br>*log : boolean, optional*
+        > Whether to make the y-axis log-scale. Emphasizes uncommon occurrences. Default is True.
+        
+        *bins : int, optional*
+        > Increase or decrease bin width depending on size and range of dataset. Default is 50.
+        
+        *xmax : None or float, optional*
+        > Set a maximum on the x-axis (for easier viewing) if there is one outlying point far out on the x-axis.
+        """
         timedif = self.df['TimeDiff'][1:]   # Get time diffs, excluding first entry (which is 0)
         if (xmax != None) & np.any(timedif > xmax):
             print("Warning: Data beyond xmax={:f} in {:s}".format(xmax, self.title))
@@ -353,35 +243,6 @@ class Dataset:
         display(fig); plt.close(fig)
         return fig
     
-    # Used by plot functions to display the global time being plotted
-    # E.g. a 2 hour dataset may be "11:36 - 13:45" (we use a 24 hour clock)
-    # Input the dataframe we're plotting from, and the start/end time w/ respect to the dataframe (e.g. 2000 seconds)
-    @staticmethod
-    def gen_time_str(df, start_time=None, end_time=None):
-        start_ind = 0 if start_time is None else df.index[df['TimeElapsed'] >= start_time].min()
-        end_ind = len(df)-1 if end_time is None else df.index[df['TimeElapsed'] <= end_time].max()
-        time_str_start = df.loc[start_ind,'Timestamp'].strftime('%H:%M')
-        time_str_end = df.loc[end_ind,'Timestamp'].strftime('%H:%M')
-        return '{:s} - {:s}'.format(time_str_start,time_str_end)
-
-    ### Some measurements are stored in radians, some in degrees.
-    # Sometimes we have to change the units based on what we want to plot
-    # Also used to transfer self.angle_threshold from deg2rad, if necessary (input will be int or float)
-    @staticmethod
-    def get_correct_units(input):
-        if isinstance(input, (int, float)):
-            # Correcting self.angle_threshold
-            if Dataset.ANGLE_UNITS_IS_RAD:
-                return np.deg2rad(input)
-            else:
-                return input
-        # input is pandas series (df column)
-        if Dataset.ANGLE_UNITS_IS_RAD and input.name in Dataset.DEGREES_COLUMNS:
-            return np.deg2rad(input)
-        elif not Dataset.ANGLE_UNITS_IS_RAD and input.name in Dataset.RADIANS_COLUMNS:
-            return np.rad2deg(input)
-        else:
-            return input
     
     ### Plots specified parameter over time (from the raw data)
     # birds_eye: plot the entirety of the avaliable data?
@@ -389,10 +250,25 @@ class Dataset:
     # sample_range: used to zoom in on a particular time range, e.g. (2000,2050) seconds
     # time_offset: used by SetPair (allows offsetting of plot by this constant; purely for plotting, no functional purpose)
     def plot_raw(self,birds_eye=True,plot_param='AllStokes',sample_range=None,time_offset=0.0):
+        """
+        **Dataset.plot(plot_param='s1', sample_range=None, birds_eye=True)**
+        <br>Plot some parameter in the dataset over time.
+        
+        **Parameters**
+        <br>*plot_param : string, optional*
+        > The parameter(s) to plot. Default is "AllStokes" (all normalized stokes parameters). Options are:
+        > - AllStokes, s1, s2, s3, S0, S1, S2, S3, Azimuth, Ellipticity, DOP, DOCP, DOLP, Power, Power_pol, Power_unpol
+        
+        *sample_range : None or tuple of two floats, optional*
+        > A portion of the plot to zoom in on, given in seconds, e.g. sample_range=(50,100)
+        
+        *birds_eye : boolean, optional*
+        > Whether or not to show the birds eye view
+        """
         # sample_range should be of the form (sample_start, sample_end) if a smaller range is desired
         # if sample_start or sample_end are None themselves, they will be filled in
         if sample_range is not None:
-            sample_start, sample_end = Dataset.fill_in_range(sample_range, self.df)
+            sample_start, sample_end = dataframe_management_utils.fill_in_range(sample_range, self.df)
             sample_range = (sample_start+time_offset, sample_end+time_offset)   # Make sure we include the offset
         
         # Plot entire dataset if requested
@@ -408,10 +284,10 @@ class Dataset:
         if birds_eye:
             BE_fig, BE_ax = plt.subplots(figsize=(12,3))
             for param,color in params_array:
-                BE_ax.plot(self.df['TimeElapsed'], Dataset.get_correct_units(self.df[param]), label=param, linewidth=0.5, marker='o', markersize=0.8, color=color, alpha=0.5)
+                BE_ax.plot(self.df['TimeElapsed'], dataframe_management_utils.transfer_value_units(self.df[param]), label=param, linewidth=0.5, marker='o', markersize=0.8, color=color, alpha=0.5)
             BE_ax.set_xlabel('Time [s]')
-            BE_ax.set_title('{:s} (raw) | {:s} | {:s}'.format(plot_param, self.title, Dataset.gen_time_str(self.df)), fontsize=14, fontweight='bold')
-            BE_ax.set_ylabel('{:s} [{:s}]'.format(plot_param,Dataset.UNITS.get(plot_param,'TODO')))
+            BE_ax.set_title('{:s} (raw) | {:s} | {:s}'.format(plot_param, self.title, dataframe_management_utils.gen_time_str(self.df)), fontsize=14, fontweight='bold')
+            BE_ax.set_ylabel('{:s} [{:s}]'.format(plot_param,dataframe_management_utils.get_param_units(plot_param,'TODO')))
             BE_ax.grid(True)
             BE_ax.legend(loc='upper right')
             # We add green lines to the birds eye plot to denote where sample_range is located
@@ -426,10 +302,10 @@ class Dataset:
             # Plot of specified sample
             ZI_fig, ZI_ax = plt.subplots(figsize=(12,3))
             for param,color in params_array:
-                ZI_ax.plot(self.df['TimeElapsed'], Dataset.get_correct_units(self.df[param]), label=param, linewidth=1, marker='o', markersize=1.5, color=color)
+                ZI_ax.plot(self.df['TimeElapsed'], dataframe_management_utils.transfer_value_units(self.df[param]), label=param, linewidth=1, marker='o', markersize=1.5, color=color)
             ZI_ax.set_xlabel('Time [s]')
-            ZI_ax.set_title('{:s} (raw) | {:s} | {:s}'.format(plot_param, self.title, Dataset.gen_time_str(self.df, sample_range[0], sample_range[1])), fontsize=14, fontweight='bold')
-            ZI_ax.set_ylabel('{:s} [{:s}]'.format(plot_param,Dataset.UNITS.get(plot_param,'TODO')))
+            ZI_ax.set_title('{:s} (raw) | {:s} | {:s}'.format(plot_param, self.title, dataframe_management_utils.gen_time_str(self.df, sample_range[0], sample_range[1])), fontsize=14, fontweight='bold')
+            ZI_ax.set_ylabel('{:s} [{:s}]'.format(plot_param,dataframe_management_utils.get_param_units(plot_param,'TODO')))
             ZI_ax.grid(True)
             ZI_ax.legend(loc='upper right')
             ZI_ax.set_xlim(sample_range[0],sample_range[1])
@@ -437,25 +313,3 @@ class Dataset:
             display(ZI_fig); plt.close(ZI_fig)
         
         return BE_fig,ZI_fig
-    
-    # Below are a few similarity metrics we can use to quantify the "distance" between any observation and
-    # a given reference polarization.
-    # While the non-normalized stokes parameters are passed in (S1, S2, S3), we effectively normalize
-    # when we divide the dot product by S0 in the end
-    # Note: S0 is calculated at the time of taking the dot product, not used from the S0 parameter; this is
-    # because the precision that comes with S0 is fine for graphing purposes, but not for ensuring the dot
-    # product is normalized
-    @staticmethod
-    def dot(stokes_1, stokes_2):
-        dot = np.dot(stokes_1, stokes_2)
-        cos_value = dot / (np.linalg.norm(stokes_1) * np.linalg.norm(stokes_2))
-        return cos_value
-    @staticmethod
-    def dist_metric(stokes_1, stokes_2):
-        return 1-Dataset.dot(stokes_1, stokes_2)
-    @staticmethod
-    def angle_metric(stokes_1, stokes_2):
-        cos_value = Dataset.dot(stokes_1, stokes_2)
-        return np.degrees(np.arccos(cos_value))
-
-
