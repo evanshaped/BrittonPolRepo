@@ -9,7 +9,7 @@ import data_manager.utils.dataframe_management_utils as dataframe_management_uti
 ### For long datasets (multiple hours) we cannot use the nominal switch time of 1 / (2 * 2Hz) = 0.25 seconds (finding the switch offset and extending the
 ### switch markers, the markers will drift from the actual switch times). We must locate the switch offset at the beginning *and* at ~1 hour in, and calculate
 ### the actual switch time.
-def calc_actual_switch_time(mean_offset_1, change_point_range_1, mean_offset_2, change_point_range_2, nominal_switch_time):
+def calc_actual_switch_time(mean_offset_1, change_point_range_1, mean_offset_2, change_point_range_2, nominal_switch_time, print_process=False):
     # Difference in the two offsets; this is the total drift between the two ranges
     offset_drift = mean_offset_2 - mean_offset_1
     # Occasionally, stuff will happen with the mod of the offset drift, and the phase range will have to be adjusted
@@ -36,7 +36,9 @@ def calc_actual_switch_time(mean_offset_1, change_point_range_1, mean_offset_2, 
     # mean_offset_1_location is the detection location
     mean_offset_1_location = mean_offset_1 + nominal_switch_time * np.floor(cp_range_1_midpoint/nominal_switch_time)
     # We calculate the new offset based on the newly corrected switch time
-    actual_switch_offset = mean_offset_1_location % self.switch_time
+    actual_switch_offset = mean_offset_1_location % actual_switch_time
+
+    if print_process: print(BOLD_ON+'Nominal Switch Time = {:.7f}\nOffset change of {:.3f} seconds over {} switches\nCorrected Switch Time = {:.7f}'.format(nominal_switch_time,offset_drift,num_switches_between_cp_ranges,actual_switch_time)+BOLD_OFF)
 
     return actual_switch_time, actual_switch_offset
 
@@ -321,7 +323,7 @@ def change_point(main_df, nominal_switch_time, change_point_range, n_exclude, pr
 ### to be recorded (i.e., if there are no recorded points in that segment),
 ### we interpolate the data using the nearest segments for that signal where there *is*
 ### valid data.
-def interpolate(df, time_gap, print_process):
+def interpolate(df, time_gap, print_process=False):
     ### This function works by finding the missing sections and imputing (linearly interpolating) the values.
     ### For each gap we create and store the necessary rows; at the end, we add them all
     ### to the final dataframe and sort by time to get everything back in order

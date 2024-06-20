@@ -48,13 +48,28 @@ class SwitchSet(Dataset):
         self.signal_1_input_stokes = None
         self.signal_2_input_stokes = None
         #self.metrics=['dist','angle']
+
+    ### Print metainfo obtained from the csv file
+    def print_info(self):
+        print("=== PAX Configuration parameters ===")
+        print("Device ID: {:s}".format(self.device_id))
+        print("Serial number: {:s}".format(self.serial_num))
+        print("Wavelength (nm): {:.2f}".format(self.wavelength))
+        print("Basic Sample Rate (Hz): {:.1f}".format(self.basic_sample_rate))
+        print("Operating Mode Period (# of rotations): {:.1f}".format(self.op_mode_period))
+        print("Operating Mode FFT Points: {:d}".format(self.op_mode_FFT_num))
+        print("--> Nominal Sample Rate (Hz): {:.2f}".format(self.nominal_sample_rate))
+        print("\n=== Dataset information ===")
+        print("Filename: {:s}".format(self.filename))
+        print("Time range read (seconds): min={:.2f}, max={:.2f}".format(self.mintime, self.maxtime))
+        print("Average Sample Rate (Hz): {:.2f}".format(self.avg_sample_rate))
     
     ### Plots specified parameter over time (from the raw data)
     # birds_eye: plot the entirety of the avaliable data?
     # plot_param: choose from s1,s2,s3,S0,S1,S2,S3,Azimuth,Ellipticity,Power,DOP,...
     # sample_range: used to zoom in on a particular time range, e.g. (2000,2050) seconds
     # time_offset: used by SetPair (allows offsetting of plot by this constant; purely for plotting, no functional purpose)
-    def plot_raw(self,birds_eye=True,plot_param='s1',sample_range=None,plot_switch=False,plot_jumps=False,plot_valid=False,plot_avg=False,time_offset=0.0):
+    def plot_raw(self,birds_eye=True,plot_param='s1',sample_range=None,plot_switch=False,plot_avg=False,time_offset=0.0):
         # sample_range should be of the form (sample_start, sample_end) if a smaller range is desired
         # if sample_start or sample_end are None themselves, they will be filled in
         if sample_range is not None:
@@ -97,7 +112,7 @@ class SwitchSet(Dataset):
                         plot_time += self.switch_time
 
                 # If requested, plot the detected jumps that were used to determine the switch times
-                if plot_jumps:
+                if plot_switch:   # Replaced plot_jumps with plot_switch
                     for i in range(len(self.df)):
                         if self.df.at[i,'IsJump']:
                             X = self.df.loc[i-1:i,'TimeElapsed']
@@ -107,7 +122,7 @@ class SwitchSet(Dataset):
                 # TODO: doing this by groupby may be more efficient/cleaner
                 # If requested, overwrite the included points with the color blue
                 # Assumes all valid sections start with an IsStartPoint=True and end with an IsEndPoint=True
-                if plot_valid:
+                if plot_switch:   # Replaced plot_valid with plot_switch
                     start_index = self.df.index[self.df['TimeElapsed'] >= sample_range[0]].min()   # Start point where sample range starts
                     end_index = self.df.index[self.df['TimeElapsed'] <= sample_range[1]].max()   # End point where sample range ends
                     start_index -= 20   # Give some wiggle room for start of a valid section
@@ -372,11 +387,9 @@ class SwitchSet(Dataset):
 
             ### Takes the calculated offset at *the beginning of* and *1 hour into* the dataset, and identifies the *actual* time between switches, which is likely
             ### off from the nominal value by some amount on the order of a fraction of a percent (only has to be accounted for for multi-hour datasets)
-            actual_switch_time, actual_switch_offset = switch_detection_utils.calc_actual_switch_time(mean_offset_1, change_point_range_1, mean_offset_2, change_point_range_2, self.nominal_switch_time)
+            actual_switch_time, actual_switch_offset = switch_detection_utils.calc_actual_switch_time(mean_offset_1, change_point_range_1, mean_offset_2, change_point_range_2, self.nominal_switch_time, print_process)
             self.switch_time = actual_switch_time
             self.switch_offset = actual_switch_offset
-            
-            if print_process: print(BOLD_ON+'Nominal Switch Time = {:.7f}\nOffset change of {:.3f} seconds over {} switches\nCorrected Switch Time = {:.7f}'.format(self.nominal_switch_time,offset_drift,num_switches_between_cp_ranges,self.switch_time)+BOLD_OFF)
         else:
             self.switch_time = self.nominal_switch_time   # If second range not provided, don't correct switch time
             self.switch_offset = mean_offset_1   # There is nothing in the offset to correct for
