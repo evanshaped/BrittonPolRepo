@@ -69,14 +69,14 @@ class SwitchSet(Dataset):
     # plot_param: choose from s1,s2,s3,S0,S1,S2,S3,Azimuth,Ellipticity,Power,DOP,...
     # sample_range: used to zoom in on a particular time range, e.g. (2000,2050) seconds
     # time_offset: used by SetPair (allows offsetting of plot by this constant; purely for plotting, no functional purpose)
-    def plot_raw(self,birds_eye=True,plot_param='s1',sample_range=None,plot_switch=False,plot_avg=False,time_offset=0.0):
+    def plot_raw(self,plot_param='s1',sample_range=None,birds_eye=True,time_offset=0.0):        
         # sample_range should be of the form (sample_start, sample_end) if a smaller range is desired
         # if sample_start or sample_end are None themselves, they will be filled in
         if sample_range is not None:
             sample_start, sample_end = dataframe_management_utils.fill_in_range(sample_range, self.df)
             sample_range = (sample_start+time_offset, sample_end+time_offset)   # Make sure we include the offset
         
-        # Plot entire dataset if requested
+        # Plot entire dataset
         if birds_eye:
             BE_fig, BE_ax = plt.subplots(figsize=(12,3))
             BE_ax.plot(self.df['TimeElapsed'], dataframe_management_utils.transfer_value_units(self.df[plot_param]), label=plot_param, linewidth=0.5, marker='o', markersize=0.8, color='red', alpha=0.5)
@@ -91,7 +91,7 @@ class SwitchSet(Dataset):
                     BE_ax.axvline(val, color = 'green', linewidth=2)
             display(BE_fig); plt.close(BE_fig)   # Show entire dataset
         
-        # Plot smaller sample range if requested
+        # Plot smaller sample range
         if sample_range is not None:
             ZI_fig, ZI_ax = plt.subplots(figsize=(12,3))
             ZI_ax.set_xlim(sample_range[0],sample_range[1])
@@ -101,51 +101,48 @@ class SwitchSet(Dataset):
             ZI_ax.set_ylabel('{:s} [{:s}]'.format(plot_param,dataframe_management_utils.get_param_units(plot_param,'TODO')))
             ZI_ax.grid(True)
             ZI_ax.legend(loc='upper right')
-            # If change times have been detected, we can plot that extra information
+            
+            # If switch times have been detected, we can plot that extra information
             if self.change_point_params != []:
-                # If requested, plot the estimated switches on the time series data (plot switches on entire dataset)
-                if plot_switch:
-                    num_switch_to_start_on = np.floor((sample_range[0] - self.switch_offset)/self.switch_time)
-                    plot_time = num_switch_to_start_on * self.switch_time + self.switch_offset
-                    while plot_time < sample_range[1]:
-                        ZI_ax.axvline(plot_time, color = 'purple', linewidth=0.8)
-                        plot_time += self.switch_time
+                # Plot the estimated switch times with vertical purple lines
+                num_switch_to_start_on = np.floor((sample_range[0] - self.switch_offset)/self.switch_time)
+                plot_time = num_switch_to_start_on * self.switch_time + self.switch_offset
+                while plot_time < sample_range[1]:
+                    ZI_ax.axvline(plot_time, color = 'purple', linewidth=0.8)
+                    plot_time += self.switch_time
 
-                # If requested, plot the detected jumps that were used to determine the switch times
-                if plot_switch:   # Replaced plot_jumps with plot_switch
-                    for i in range(len(self.df)):
-                        if self.df.at[i,'IsJump']:
-                            X = self.df.loc[i-1:i,'TimeElapsed']
-                            Y = self.df.loc[i-1:i,plot_param]
-                            ZI_ax.plot(X,Y, linewidth=1, marker='o', markersize=1.5, color='orange')
+                # Plot the detected jumps that were used to determine the switch times in orange
+                for i in range(len(self.df)):
+                    if self.df.at[i,'IsJump']:
+                        X = self.df.loc[i-1:i,'TimeElapsed']
+                        Y = self.df.loc[i-1:i,plot_param]
+                        ZI_ax.plot(X,Y, linewidth=1, marker='o', markersize=1.5, color='orange')
 
-                # TODO: doing this by groupby may be more efficient/cleaner
-                # If requested, overwrite the included points with the color blue
+                # Overwrite the included points with the color blue
                 # Assumes all valid sections start with an IsStartPoint=True and end with an IsEndPoint=True
-                if plot_switch:   # Replaced plot_valid with plot_switch
-                    start_index = self.df.index[self.df['TimeElapsed'] >= sample_range[0]].min()   # Start point where sample range starts
-                    end_index = self.df.index[self.df['TimeElapsed'] <= sample_range[1]].max()   # End point where sample range ends
-                    start_index -= 20   # Give some wiggle room for start of a valid section
-                    end_index += 20
-                    start_index = max(start_index,0)   # In case i is negative, start at beginning
-                    end_index = min(end_index,len(self.df)-1)
-                    X = []; Y = []
-                    i = start_index
-                    while i <= end_index:
-                        if self.df.at[i,'IsStartPoint']:   # We reach the start of a valid section
-                            while True:   # Iterate over the valid section, adding all valid points
-                                X.append(self.df.at[i,'TimeElapsed'])
-                                Y.append(self.df.at[i,plot_param])
-                                i+=1
-                                if self.df.at[i-1,'IsEndPoint']:   # If the point just added was an end point, break
-                                    break
-                            ZI_ax.plot(X,Y, linewidth=1, marker='o', markersize=1.5, color='blue')   # Plot the valid section
-                            X = []; Y = []
-                        else:
+                start_index = self.df.index[self.df['TimeElapsed'] >= sample_range[0]].min()   # Start point where sample range starts
+                end_index = self.df.index[self.df['TimeElapsed'] <= sample_range[1]].max()   # End point where sample range ends
+                start_index -= 20   # Give some wiggle room for start of a valid section
+                end_index += 20
+                start_index = max(start_index,0)   # In case i is negative, start at beginning
+                end_index = min(end_index,len(self.df)-1)
+                X = []; Y = []
+                i = start_index
+                while i <= end_index:
+                    if self.df.at[i,'IsStartPoint']:   # We reach the start of a valid section
+                        while True:   # Iterate over the valid section, adding all valid points
+                            X.append(self.df.at[i,'TimeElapsed'])
+                            Y.append(self.df.at[i,plot_param])
                             i+=1
+                            if self.df.at[i-1,'IsEndPoint']:   # If the point just added was an end point, break
+                                break
+                        ZI_ax.plot(X,Y, linewidth=1, marker='o', markersize=1.5, color='blue')   # Plot the valid section
+                        X = []; Y = []
+                    else:
+                        i+=1
 
-                # If requested and if the data has been averaged, we will plot that overtop the raw data
-                if (self.signal_1_df is not None) & plot_avg:
+                # If the data has been averaged, also plot that overtop the raw data
+                if (self.signal_1_df is not None):
                     #TODO: plot interpolated points in a different color
                     plot_avg_std=False
                     plot_param_avg_str = plot_param+"Avg"
@@ -171,7 +168,7 @@ class SwitchSet(Dataset):
     # time_offset: used by SetPair (allows offsetting of plot by this constant; purely for plotting, no functional purpose)
     # plot_rolling: if plot_param=='rotAngle', this will determine whether to plot the rolling average of rotAngle; default is True
     # enforce_ylim: sometimes for noisy signals the ylim can get messed up; when set to True, this will automatically make the upper ylim 20% above the reset threshold
-    def plot_separated(self,birds_eye=True,plot_param='s1Avg',plot_param_2=None,sample_range=None,plot_signal=None,time_offset=0.0,plot_rolling=True,enforce_ylim=False):
+    def plot_separated(self,plot_param='s1Avg',plot_param_2=None,sample_range=None,plot_signal=None,birds_eye=True,time_offset=0.0,plot_rolling=True,enforce_ylim=False):
         if self.signal_1_df is None:
             print('Error: averages not yet calculated')
             return
@@ -266,7 +263,7 @@ class SwitchSet(Dataset):
             display(BE_fig); plt.close(BE_fig)   # Show entire dataset
         
         # If requested, we'll also plot the smaller sample range
-        alpha=0.5 # Temporary, for getting good looking plots for 407 report; can be switched back to 1.0
+        alpha=0.8 # Temporarily 0.5, for getting good looking plots for 407 report; can be switched back to 1.0
         markersize=0.5 # was 0.8
         linestyle_1='-'
         linestyle_2='--'
@@ -347,7 +344,13 @@ class SwitchSet(Dataset):
     ### this function computes the time offset of the switches and marks down such information
     ### so it can be used by average_data, plotting functions, and future functions
     ### Later results will be more precise if the first change point range is close to the front of the dataset
-    def find_switches(self, nominal_switch_rate=2, change_point_range_1=None, change_point_range_2=None, time_offset=0.0, n_exclude=3, print_process=False):
+    def find_switches(self, nominal_switch_rate=2, time_offset=0.0, print_process=False):
+        # These were parameters in the function declaration used during development.
+        # Now, these parameters are pre-set, or determined automatically
+        change_point_range_1=None
+        change_point_range_2=None
+        n_exclude=3
+        
         # Logic: Ensure change point hasn't already been calculated
         if self.change_point_params!=[]:
             # TODO: allow to recalculate change points based on new change point range
