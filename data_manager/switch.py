@@ -268,7 +268,7 @@ class SwitchSet(Dataset):
         linestyle_1='-'
         linestyle_2='--'
         linewidth=0.6
-        marker=''
+        marker='*'
         if sample_range is not None:
             # Zoomed In plot 
             ZI_fig, ZI_ax = plt.subplots(figsize=(12,3))
@@ -450,7 +450,7 @@ class SwitchSet(Dataset):
     
     ### This is a user function used to take the valid sections found within find_switches,
     ### and separate the data into the two orthogonal polarization signals, averaging the data within each valid section
-    def average_data(self, assign_by=None, print_process=False, print_assignment=False):
+    def average_data(self, assign_by=None, print_process=False):
         if self.change_point_params == []:
             print(BOLD_ON + 'Error: change times not yet detected' + BOLD_OFF)
             return
@@ -578,13 +578,13 @@ class SwitchSet(Dataset):
         assign_by_arr = np.array(['s1Avg','s2Avg','s3Avg'])
         # If unspecified, we'll choose the assign_by parameter automatically, based on the largest spread between signals
         if assign_by is None:
-            if print_assignment: print('\tChoosing assign_by parameter automatically; ',end='')
+            if print_process: print('\tChoosing assign_by parameter automatically; ',end='')
             first_stokes_difs = [(self.signal_2_df[assign_by][0]-self.signal_1_df[assign_by][0]) \
                                  for assign_by in assign_by_arr]
             max_dif_index = np.argmax([abs(n) for n in first_stokes_difs])
             assign_by = assign_by_arr[max_dif_index]
             assign_dif = first_stokes_difs[max_dif_index]
-            if print_assignment: print('\tUsing assign_by = \"{:s}\" where dif = {:.2f}'.format(assign_by,assign_dif))
+            if print_process: print('\tUsing assign_by = \"{:s}\" where dif = {:.2f}'.format(assign_by,assign_dif))
         else:
             assign_dif = self.signal_2_df[assign_by][0]-self.signal_1_df[assign_by][0]
         self.assign_by = assign_by
@@ -593,17 +593,17 @@ class SwitchSet(Dataset):
         if abs(assign_dif) < 0.3:
             print(BOLD_ON+'Warning: {:s} of signals are close together (dif = {:.2f}); difficult to assign \"signal 1\"'.format(assign_by,assign_dif)+BOLD_OFF)
         if assign_dif < 0:
-            if print_assignment: print('\tDif = {:.2f} for {:s} is negative; switching signals'.format(assign_dif,assign_by))
+            if print_process: print('\tDif = {:.2f} for {:s} is negative; switching signals'.format(assign_dif,assign_by))
             temp = self.signal_1_df
             self.signal_1_df = self.signal_2_df
             self.signal_2_df = temp
         else:
-            if print_assignment: print('\tDif = {:.2f} for {:s} is positive; not switching signals'.format(assign_dif,assign_by))
+            if print_process: print('\tDif = {:.2f} for {:s} is positive; not switching signals'.format(assign_dif,assign_by))
         
         if print_process:
             print('Signal 1 size={}\tSignal 1 range: t=({:.2f},{:.2f})'.format(len(self.signal_1_df),self.signal_1_df.at[0,'EstTime'],self.signal_1_df.at[len(self.signal_1_df)-1,'EstTime']))
             print('Signal 2 size={}\tSignal 2 range: t=({:.2f},{:.2f})'.format(len(self.signal_2_df),self.signal_2_df.at[0,'EstTime'],self.signal_2_df.at[len(self.signal_2_df)-1,'EstTime']))
-        if print_assignment:
+        if print_process:
             stokes_1_first, stokes_2_first = math_utils.first_stokes(self.signal_1_df, self.signal_2_df)
             print('\tFirst measurement of Signal 1: ', stokes_1_first)
             print('\tFirst measurement of Signal 2: ', stokes_2_first)
