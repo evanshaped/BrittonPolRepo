@@ -30,7 +30,7 @@ import datetime
 import allantools
 
 class SwitchSet(Dataset):
-    def __init__(self, filename, set_range=None, time_offset=0.0, skip_default_signal_baseline=True):
+    def __init__(self, filename, set_range=None, skip_default_signal_baseline=True):
         super().__init__(filename, set_range, skip_default_signal_baseline)
         
         self.change_point_params = []
@@ -68,13 +68,11 @@ class SwitchSet(Dataset):
     # birds_eye: plot the entirety of the avaliable data?
     # plot_param: choose from s1,s2,s3,S0,S1,S2,S3,Azimuth,Ellipticity,Power,DOP,...
     # sample_range: used to zoom in on a particular time range, e.g. (2000,2050) seconds
-    # time_offset: used by SetPair (allows offsetting of plot by this constant; purely for plotting, no functional purpose)
-    def plot_raw(self,plot_param='s1',sample_range=None,birds_eye=True,time_offset=0.0):        
+    def plot_raw(self,plot_param='s1',sample_range=None,birds_eye=True):        
         # sample_range should be of the form (sample_start, sample_end) if a smaller range is desired
         # if sample_start or sample_end are None themselves, they will be filled in
         if sample_range is not None:
             sample_start, sample_end = dataframe_management_utils.fill_in_range(sample_range, self.df)
-            sample_range = (sample_start+time_offset, sample_end+time_offset)   # Make sure we include the offset
         
         # Plot entire dataset
         if birds_eye:
@@ -165,10 +163,9 @@ class SwitchSet(Dataset):
     # plot_param_2: allows plotting of two parameters
     # sample_range: used to zoom in on a particular time range, e.g. (2000,2050) seconds
     # plot_signal: we have two separated signals; which do we want to show? 1, 2, None (both)
-    # time_offset: used by SetPair (allows offsetting of plot by this constant; purely for plotting, no functional purpose)
     # plot_rolling: if plot_param=='rotAngle', this will determine whether to plot the rolling average of rotAngle; default is True
     # enforce_ylim: sometimes for noisy signals the ylim can get messed up; when set to True, this will automatically make the upper ylim 20% above the reset threshold
-    def plot_separated(self,plot_param='s1Avg',plot_param_2=None,sample_range=None,plot_signal=None,birds_eye=True,time_offset=0.0,plot_rolling=True,enforce_ylim=False):
+    def plot_separated(self,plot_param='s1Avg',plot_param_2=None,sample_range=None,plot_signal=None,birds_eye=True,plot_rolling=True,enforce_ylim=False):
         if self.signal_1_df is None:
             print('Error: averages not yet calculated')
             return
@@ -187,7 +184,6 @@ class SwitchSet(Dataset):
             max_est_time = max(self.signal_1_df.loc[self.signal_1_df.shape[0]-1,'EstTime'],\
                                self.signal_2_df.loc[self.signal_2_df.shape[0]-1,'EstTime'])
             sample_end = max_est_time if sample_range[1] is None else sample_range[1]
-            sample_range = (sample_start+time_offset, sample_end+time_offset)   # Make sure we include the offset
         
         # Plot entire dataset if specified
         alpha=0.5 # Temporary, for getting good looking plots for 407 report; can be switched back to 1.0
@@ -344,7 +340,7 @@ class SwitchSet(Dataset):
     ### this function computes the time offset of the switches and marks down such information
     ### so it can be used by average_data, plotting functions, and future functions
     ### Later results will be more precise if the first change point range is close to the front of the dataset
-    def find_switches(self, nominal_switch_rate=2, time_offset=0.0, print_process=False):
+    def find_switches(self, nominal_switch_rate=2, print_process=False):
         # These were parameters in the function declaration used during development.
         # Now, these parameters are pre-set, or determined automatically
         change_point_range_1=None
@@ -362,7 +358,6 @@ class SwitchSet(Dataset):
         self.df['IsJump'] = False
         
         # Logic: If desired, determine cp ranges automatically
-        # Should not be used alongside time_offset
         if change_point_range_1 is None:
             if print_process: print('Determining change point ranges automatically...')
             change_point_range_1 = (self.mintime, self.mintime+100)
@@ -377,7 +372,6 @@ class SwitchSet(Dataset):
         ### Perform change point detection at the beginning of the dataset to find the offset of the switches
         ### Uses util function switch_detection_utils.change_point(...); most of the math is located here
         if print_process: print('Using change_point_range_1={}\nUsing change_point_range_2={}'.format(change_point_range_1,change_point_range_2))
-        change_point_range_1 = (change_point_range_1[0]+time_offset, change_point_range_1[1]+time_offset)   # Include time_offset
         change_point_range_1, change_point_df_1, points_skipped_1, switch_param_1, mean_offset_1, left_edge_1, right_edge_1, jump_fig_1 = switch_detection_utils.change_point(self.df,self.nominal_switch_time,change_point_range_1,n_exclude,print_process)
         self.change_point_params = []
         self.change_point_params.append((change_point_range_1, change_point_df_1, points_skipped_1, switch_param_1, mean_offset_1, left_edge_1, right_edge_1, jump_fig_1))
@@ -387,7 +381,6 @@ class SwitchSet(Dataset):
         # perform change point detection a second time ~3000 seconds (~an hour) later and correct
         # the switch time
         if change_point_range_2 is not None:
-            change_point_range_2 = (change_point_range_2[0]+time_offset, change_point_range_2[1]+time_offset)   # Include time_offse
             change_point_range_2, change_point_df_2, points_skipped_2, switch_param_2, mean_offset_2, left_edge_2, right_edge_2, jump_fig_2 = switch_detection_utils.change_point(self.df,self.nominal_switch_time,change_point_range_2,n_exclude,print_process)
             self.change_point_params.append((change_point_range_2, change_point_df_2, points_skipped_2, switch_param_2, mean_offset_2, left_edge_2, right_edge_2, jump_fig_2))
 
