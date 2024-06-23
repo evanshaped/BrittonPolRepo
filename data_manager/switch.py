@@ -352,12 +352,14 @@ class SwitchSet(Dataset):
         n_exclude=3
         
         # Logic: Ensure change point hasn't already been calculated
-        if self.change_point_params!=[]:
-            # TODO: allow to recalculate change points based on new change point range
-            print(BOLD_ON + 'Error: change times already detected!' + BOLD_OFF)
-            return
+        # if self.change_point_params!=[]:
+        #     # TODO: allow to recalculate change points based on new change point range
+        #     print(BOLD_ON + 'Error: change times already detected!' + BOLD_OFF)
+        #     return
+        
         self.nominal_switch_time = 1/(2*nominal_switch_rate)   # Time between switches
-        self.df.insert(self.df.columns.get_loc('TimeDiff')+1, 'IsJump', [False]*len(self.df))
+        #self.df.insert(self.df.columns.get_loc('TimeDiff')+1, 'IsJump', [False]*len(self.df))   # TODO: remove this
+        self.df['IsJump'] = False
         
         # Logic: If desired, determine cp ranges automatically
         # Should not be used alongside time_offset
@@ -377,6 +379,7 @@ class SwitchSet(Dataset):
         if print_process: print('Using change_point_range_1={}\nUsing change_point_range_2={}'.format(change_point_range_1,change_point_range_2))
         change_point_range_1 = (change_point_range_1[0]+time_offset, change_point_range_1[1]+time_offset)   # Include time_offset
         change_point_range_1, change_point_df_1, points_skipped_1, switch_param_1, mean_offset_1, left_edge_1, right_edge_1, jump_fig_1 = switch_detection_utils.change_point(self.df,self.nominal_switch_time,change_point_range_1,n_exclude,print_process)
+        self.change_point_params = []
         self.change_point_params.append((change_point_range_1, change_point_df_1, points_skipped_1, switch_param_1, mean_offset_1, left_edge_1, right_edge_1, jump_fig_1))
         #self.switch_offset = mean_offset_1
         
@@ -406,16 +409,24 @@ class SwitchSet(Dataset):
         switch_array = np.arange(time_to_start_on, t_max, self.switch_time)   # Array of estimated switch times along dataset
         switch_indices = np.searchsorted(self.df['TimeElapsed'].tolist(), switch_array)   # Samples in dataset which occur right after a switch
         #value = [idx in switch_indices for idx in self.df.index]
-        self.df.insert(self.df.columns.get_loc('IsJump')+1, 'IsSwitch', self.df.index.isin(switch_indices))   # These samples are marked as switch points
+        #self.df.insert(self.df.columns.get_loc('IsJump')+1, 'IsSwitch', self.df.index.isin(switch_indices))   # TODO: remove this
+        self.df['IsSwitch'] = self.df.index.isin(switch_indices)   # These samples are marked as switch points
         
         ### We exclude samples which are too close to a switch, as they could be outliers or limbo samples
         ### (the PAX has a tendency to produce these around the switches)
         ### The number of excluded samples controlled by parameter n (default is n=4, usually more than enough)
         # IsStartPoint and IsEndPoint mark the start and end of 'valid' (non-excluded) sections of data samples
         # (later separated into the two signals)
-        self.df.insert(self.df.columns.get_loc('IsSwitch')+1, 'IsValidPoint', [True]*len(self.df))   # Assume all samples valid; exclude as we go
-        self.df.insert(self.df.columns.get_loc('IsValidPoint')+1, 'IsStartPoint', [False]*len(self.df))
-        self.df.insert(self.df.columns.get_loc('IsStartPoint')+1, 'IsEndPoint', [False]*len(self.df))
+        
+        # self.df.insert(self.df.columns.get_loc('IsSwitch')+1, 'IsValidPoint', [True]*len(self.df))   # TODO: remove these lines
+        # self.df.insert(self.df.columns.get_loc('IsValidPoint')+1, 'IsStartPoint', [False]*len(self.df))
+        # self.df.insert(self.df.columns.get_loc('IsStartPoint')+1, 'IsEndPoint', [False]*len(self.df))
+
+        self.df['IsValidPoint'] = True   # Assume all samples valid; exclude as we go
+        self.df['IsStartPoint'] = False
+        self.df['IsEndPoint'] = False
+
+        
         #display(self.df[['TimeElapsed','IsJump', 'IsSwitch', 'IsValidPoint', 'Azimuth']].head(10))
         
         # Iterate over (most of) dataset; when we encounter a switch point, we'll exclude n samples to the left&right
@@ -454,10 +465,10 @@ class SwitchSet(Dataset):
         if self.change_point_params == []:
             print(BOLD_ON + 'Error: change times not yet detected' + BOLD_OFF)
             return
-        if self.signal_1_df is not None:
-            # TODO: if change point has changed, recalculate averages
-            print(BOLD_ON + 'Error: averaging already performed!' + BOLD_OFF)
-            return
+        # if self.signal_1_df is not None:
+        #     # TODO: if change point has changed, recalculate averages
+        #     print(BOLD_ON + 'Error: averaging already performed!' + BOLD_OFF)
+        #     return
         
         if print_process: print(BOLD_ON+'=== starting average_data ==='+BOLD_OFF)
         # Create a mask for identifying contiguous sections of 'True' or 'False' values
@@ -504,13 +515,19 @@ class SwitchSet(Dataset):
         if print_process: print(BOLD_ON+'Done'+BOLD_OFF)
         # Now we have a dataframe with one observation per valid interval, with the data averaged within this interval
         # Add some other information:
-        avg_df_dropped = avg_df[avg_df['NumPoints'] >= 4]   # Drop an observation if it contains fewer than 4 points
-        if print_process: print(BOLD_ON+'Dropped {} observations with <4 points (out of total {} observations)'.format(len(avg_df)-len(avg_df_dropped),len(avg_df))+BOLD_OFF)
-        avg_df = avg_df_dropped
-        avg_df.insert(avg_df.columns.get_loc('AvgTime')+1, 'Length', np.zeros(len(avg_df),dtype=float))
-        avg_df['Length'] = avg_df['EndTime'] - avg_df['StartTime']   # Length (in s) of valid interval
-        avg_df.insert(avg_df.columns.get_loc('NumPoints')+1, 'AvgSampleRate', np.zeros(len(avg_df),dtype=float))
+        original_length = len(avg_df)
+        avg_df = avg_df[avg_df['NumPoints'] >= 4]   # Drop an observation if it contains fewer than 4 points. TODO: could use .query inplace
+        new_length = len(avg_df)
+        if print_process: print(BOLD_ON+'Dropped {} observations with <4 points (out of total {} observations)'.format(original_length-new_length,original_length)+BOLD_OFF)
+        
+        # avg_df.insert(avg_df.columns.get_loc('AvgTime')+1, 'Length', np.zeros(len(avg_df),dtype=float))   # TODO: remove these lines
+        # avg_df['Length'] = avg_df['EndTime'] - avg_df['StartTime']   # Length (in s) of valid interval
+        # avg_df.insert(avg_df.columns.get_loc('NumPoints')+1, 'AvgSampleRate', np.zeros(len(avg_df),dtype=float))
+        # avg_df['AvgSampleRate'] = avg_df['NumPoints'] / avg_df['Length']
+
+        avg_df['Length'] = avg_df['EndTime'] - avg_df['StartTime']
         avg_df['AvgSampleRate'] = avg_df['NumPoints'] / avg_df['Length']   # Average sample rate in valid interval
+
         
         
         ### We need to check for missing observations; if the PAX lags and the delay between two points exceeds the
@@ -527,12 +544,18 @@ class SwitchSet(Dataset):
         
         # This is taking the interval time 'mod' 2*switch time
         # Half these values should be around the switch time, half should be around twice that
-        avg_df['modTwiceSwitchTime'] = avg_df['AvgTime'] % (2*self.switch_time)
-        avg_df['signalMembership'] = avg_df['modTwiceSwitchTime'] > self.switch_time
-        # Uncomment the histogram for a visual
-        # Signal 1 is the first group, signal 2 is the second
-        # avg_df['modTwiceSwitchTime'].plot.hist(range=(0,2*self.switch_time), log=True, bins=30); plt.show()
-        avg_df.drop(columns=['modTwiceSwitchTime'], inplace=True)   # We don't need this anymore, and it isn't really useful information outside of here
+        
+        # avg_df['modTwiceSwitchTime'] = avg_df['AvgTime'] % (2*self.switch_time)   # TODO: remove these lines
+        # avg_df['signalMembership'] = avg_df['modTwiceSwitchTime'] > self.switch_time
+        # # Uncomment the histogram for a visual
+        # # Signal 1 is the first group, signal 2 is the second
+        # # avg_df['modTwiceSwitchTime'].plot.hist(range=(0,2*self.switch_time), log=True, bins=30); plt.show()
+        # avg_df.drop(columns=['modTwiceSwitchTime'], inplace=True)   # We don't need this anymore, and it isn't really useful information outside of here
+
+        avg_df['signalMembership'] = (avg_df['AvgTime'] % (2*self.switch_time)) > self.switch_time
+        # Uncomment the following lines if you wish to visualize the temporary data (before being dropped)
+        # modTwiceSwitchTime = avg_df['AvgTime'] % (2*self.switch_time)
+        # modTwiceSwitchTime.plot.hist(range=(0,2*self.switch_time), log=True, bins=30); plt.show()
         
         # If modTwiceSwitchTime above was the mod, groupNumber is the remainder (but over a 1*switch time length, not 2*)
         # This should basically increase by 1 for each observation (valid interval) and skip over the missing sections
@@ -545,8 +568,12 @@ class SwitchSet(Dataset):
         
         # We use the group number to calculate the "theoretical" time based on which band the observation falls under
         # (this is so all observations are evenly spaced in time)
-        avg_df.insert(avg_df.columns.get_loc('AvgTime')+1, 'EstTime', np.zeros(len(avg_df),dtype=float))
-        avg_df['EstTime'] = (avg_df['groupNumber'] * self.switch_time) + self.switch_time/2 + self.switch_offset
+        
+        # avg_df.insert(avg_df.columns.get_loc('AvgTime')+1, 'EstTime', np.zeros(len(avg_df),dtype=float))   # TODO: remove these
+        # avg_df['EstTime'] = (avg_df['groupNumber'] * self.switch_time) + self.switch_time/2 + self.switch_offset
+
+        avg_df['EstTime'] = (avg_df['groupNumber'] * self.switch_time) + self.switch_time / 2 + self.switch_offset
+        
         # We should now be using EstTime for everything, instead of AvgTime
         avg_df.drop(columns=['groupNumber'],inplace=True)
         
@@ -555,7 +582,7 @@ class SwitchSet(Dataset):
         # which is True/False for signal 1/2
         grouped_by_signalMembership = avg_df.groupby('signalMembership')
         # We take deep copies of the dataframes so they aren't affected by changes in the original dataset
-        signal_dataframes = {signal_number: signal_df.copy() for signal_number, signal_df in grouped_by_signalMembership}
+        signal_dataframes = {signal_number: signal_df.copy() for signal_number, signal_df in grouped_by_signalMembership}   #TODO: do I need to make a deep copy?
         
         ### Now we find the missing sections and impute (linearly interpolate) the values
         ### For each gap we create and store the necessary rows; at the end, we add them all
