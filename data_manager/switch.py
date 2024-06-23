@@ -31,7 +31,7 @@ import allantools
 
 class SwitchSet(Dataset):
     def __init__(self, filename, set_range=None, time_offset=0.0, skip_default_signal_baseline=True):
-        super().__init__(filename, set_range, time_offset, skip_default_signal_baseline)
+        super().__init__(filename, set_range, skip_default_signal_baseline)
         
         self.change_point_params = []
         self.switch_offset = None

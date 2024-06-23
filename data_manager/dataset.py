@@ -24,14 +24,14 @@ class Dataset:
     > <br>Use tuple of two floats to specify a part of a dataset to read in, given via percentages. This is usually useful to save time while reading in a small portion of a large dataset. For example, set_range=(0.05,0.1) means the chunk of the dataset between 5%-10%.
     """
     
-    def __init__(self, filename, set_range=None, time_offset=0.0, skip_default_signal_baseline=True):
+    def __init__(self, filename, set_range=None, skip_default_signal_baseline=True):
         self.title = filename[filename.rindex("PAX"):-4]
         self.filename = filename
         self.plot_param = 'Azimuth'
         
         # Cleaning of the data happens in Dataset.read_pax_data
         df, num_points_dropped, device_id, serial_num, wavelength, basic_sample_rate, op_mode_period, \
-            op_mode_FFT_num = Dataset.read_pax_data(filename,set_range,time_offset, skip_default_signal_baseline)
+            op_mode_FFT_num = Dataset.read_pax_data(filename,set_range, skip_default_signal_baseline)
         self.device_id = device_id
         self.serial_num = serial_num
         self.wavelength = wavelength
@@ -57,7 +57,7 @@ class Dataset:
     # which signal is the default one. These seconds will be automatically cut out. A value of t seconds can also
     # be assigned, to give a custom number of seconds to skip (e.g. 100 if the first 100 seconds contains just one signal)
     @staticmethod
-    def read_pax_data(filename, set_range=None, time_offset=0.0, skip_default_signal_baseline=True):
+    def read_pax_data(filename, set_range=None, skip_default_signal_baseline=True):
         # Get one-off information in the header
         df_temp = pd.read_csv(filepath_or_buffer=filename, delimiter=';', header=None, usecols=[1], nrows=7)
         device_id = df_temp.iat[0,0]
@@ -140,8 +140,6 @@ class Dataset:
         # We do not reset the timestamps to be 0.000s at the first entry, but we do reset the indices
         if time_range is not None:
             set_start, set_end = dataframe_management_utils.fill_in_range(time_range, df)   # automatically fills in missing range vals
-            set_start += time_offset   # include offset
-            set_end += time_offset
             # Throw warning if including out of range data
             if set_end > df.loc[df.shape[0]-1, 'TimeElapsed']:
                 print('WARNING: data out of range specified')
@@ -248,8 +246,7 @@ class Dataset:
     # birds_eye: plot the entirety of the avaliable data?
     # plot_param: choose from s1,s2,s3,S0,S1,S2,S3,Azimuth,Ellipticity,Power,DOP,...
     # sample_range: used to zoom in on a particular time range, e.g. (2000,2050) seconds
-    # time_offset: used by SetPair (allows offsetting of plot by this constant; purely for plotting, no functional purpose)
-    def plot_raw(self,birds_eye=True,plot_param='AllStokes',sample_range=None,time_offset=0.0):
+    def plot_raw(self,birds_eye=True,plot_param='AllStokes',sample_range=None):
         """
         **Dataset.plot(plot_param='s1', sample_range=None, birds_eye=True)**
         <br>Plot some parameter in the dataset over time.
@@ -269,7 +266,6 @@ class Dataset:
         # if sample_start or sample_end are None themselves, they will be filled in
         if sample_range is not None:
             sample_start, sample_end = dataframe_management_utils.fill_in_range(sample_range, self.df)
-            sample_range = (sample_start+time_offset, sample_end+time_offset)   # Make sure we include the offset
         
         # Plot entire dataset if requested
         if plot_param=='AllStokes':
