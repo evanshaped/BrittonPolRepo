@@ -30,17 +30,13 @@ class Dataset:
         self.plot_param = 'Azimuth'
         
         # Cleaning of the data happens in Dataset.read_pax_data
-        df, num_points_dropped, device_id, serial_num, wavelength, basic_sample_rate, op_mode_period, \
-            op_mode_FFT_num = dataframe_management_utils.read_pax_data(filename,set_range, skip_default_signal_baseline)
-        self.device_id = device_id
-        self.serial_num = serial_num
-        self.wavelength = wavelength
-        self.basic_sample_rate = basic_sample_rate
-        self.op_mode_period = op_mode_period
-        self.op_mode_FFT_num = op_mode_FFT_num
-        self.num_points_dropped = num_points_dropped
-        self.df = df
-        self.num_points = df.shape[0]
+        pax_data_results = dataframe_management_utils.read_pax_data(filename,set_range, skip_default_signal_baseline)
+
+        # Storing information about the dataset
+        self.df, self.num_points_dropped, self.device_id, self.serial_num, self.wavelength, \
+            self.basic_sample_rate, self.op_mode_period, self.op_mode_FFT_num = pax_data_results
+        
+        self.num_points = self.df.shape[0]
         self.time_elapsed = df['TimeElapsed'][self.num_points-1]
         
         self.mintime = df.loc[0, 'TimeElapsed']
@@ -49,7 +45,6 @@ class Dataset:
         
         self.nominal_sample_rate = basic_sample_rate / (2*op_mode_period)
         self.avg_sample_rate = 1/(df['TimeDiff'][1:].mean())   # See rate_hist for why this code
-        return
     
     
     ### Generate histogram of time differences

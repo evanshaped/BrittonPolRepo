@@ -29,10 +29,30 @@ import seaborn as sns
 import datetime
 import allantools
 
-class SwitchSet(Dataset):
+class SwitchSet():
     def __init__(self, filename, set_range=None, skip_default_signal_baseline=True):
-        super().__init__(filename, set_range, skip_default_signal_baseline)
+        self.title = filename[filename.rindex("PAX"):-4]
+        self.filename = filename
+        self.plot_param = 'Azimuth'
         
+        # Cleaning of the data happens in Dataset.read_pax_data
+        pax_data_results = dataframe_management_utils.read_pax_data(filename,set_range, skip_default_signal_baseline)
+
+        # Storing information about the dataset
+        self.df, self.num_points_dropped, self.device_id, self.serial_num, self.wavelength, \
+            self.basic_sample_rate, self.op_mode_period, self.op_mode_FFT_num = pax_data_results
+        
+        self.num_points = self.df.shape[0]
+        self.time_elapsed = df['TimeElapsed'][self.num_points-1]
+        
+        self.mintime = df.loc[0, 'TimeElapsed']
+        self.maxtime = df.loc[df.shape[0]-1, 'TimeElapsed']
+        print('Time range: min={}, max={}'.format(self.mintime, self.maxtime))
+        
+        self.nominal_sample_rate = basic_sample_rate / (2*op_mode_period)
+        self.avg_sample_rate = 1/(df['TimeDiff'][1:].mean())   # See rate_hist for why this code
+
+        # Initializing various attributes to be empty or None
         self.change_point_params = []
         self.switch_offset = None
         self.switch_time = None
