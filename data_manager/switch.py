@@ -17,7 +17,6 @@ See PAX [manual](https://www.manualslib.com/manual/1634678/Thorlabs-Pax1000.html
 
 BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
-from .dataset import Dataset
 import data_manager.utils.math_utils as math_utils
 import data_manager.utils.dataframe_management_utils as dataframe_management_utils
 import data_manager.utils.switch_detection_utils as switch_detection_utils
@@ -36,7 +35,7 @@ class SwitchSet():
         self.filename = filename
         self.plot_param = 'Azimuth'
         
-        # Cleaning of the data happens in Dataset.read_pax_data
+        # Cleaning of the data happens in dataframe_management_utils.read_pax_data
         pax_data_results = dataframe_management_utils.read_pax_data(filename,set_range, skip_default_signal_baseline)
 
         # Storing information about the dataset
@@ -88,7 +87,7 @@ class SwitchSet():
     ### Generate histogram of TBS (time between samples)
     def plot_tbs_hist(self, log=True, bins=50, xmax=None):
         """
-        **Dataset.plot_tbs_hist(log=True, bins=50, xmax=None)**
+        **SwitchSet.plot_tbs_hist(log=True, bins=50, xmax=None)**
         <br>Visualize the consistency of the PAX's measurement rate. Generate and plot the histogram of time differences between subsequent points.
         
         **Parameters**
@@ -178,7 +177,7 @@ class SwitchSet():
         if sample_range is not None:
             sample_start, sample_end = dataframe_management_utils.fill_in_range(sample_range, self.df)
 
-        # Plot entire datasetself.
+        # Plot entire dataset
         if birds_eye:
             BE_fig, BE_ax = plt.subplots(figsize=(12,3))
             BE_ax.plot(self.df['TimeElapsed'], dataframe_management_utils.transfer_value_units(self.df[plot_param]), label=plot_param, linewidth=0.5, marker='o', markersize=0.8, color='red', alpha=0.5)
