@@ -21,6 +21,7 @@ from .dataset import Dataset
 import data_manager.utils.math_utils as math_utils
 import data_manager.utils.dataframe_management_utils as dataframe_management_utils
 import data_manager.utils.switch_detection_utils as switch_detection_utils
+import data_manager.utils.plotting_utils as plotting_utils
 import numpy as np
 from numpy import linalg as la
 import matplotlib.pyplot as plt
@@ -929,7 +930,7 @@ class SwitchSet():
         
         ADev_fig = None
         if plot_adev:
-            ADev_fig = StationarySet.plot_adev(adev_arr, plot_param=plot_param)
+            ADev_fig = plotting_utils.plot_adev(adev_arr, plot_param=plot_param)
 #             ADev_fig,ADev_ax = plt.subplots(figsize=(12,4))
 #             ADev_ax.errorbar(taus2_1, ad_1, yerr=ade_1, label=label_1)
 #             ADev_ax.errorbar(taus2_2, ad_2, yerr=ade_2, label=label_2)

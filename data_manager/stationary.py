@@ -1,6 +1,7 @@
 BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
 from .dataset import Dataset
+import data_manager.utils.plotting_utils as plotting_utils
 
 class StationarySet(Dataset):
     def average_stokes(self):
@@ -44,7 +45,7 @@ class StationarySet(Dataset):
         label = '{:s} (ADev) | {:s} | {:s}'.format(plot_param, self.title, Dataset.gen_time_str(self.df))
 
         if plot_adev:
-            StationarySet.plot_adev([(taus2,ad,ade,ns,label)], plot_param=plot_param)
+            plotting_utils.plot_adev([(taus2,ad,ade,ns,label)], plot_param=plot_param)
 #             ADev_fig,ADev_ax = plt.subplots(figsize=(12,4))
 #             ADev_ax.errorbar(taus2, ad, yerr=ade)
 #             ADev_ax.set_xscale("log")
@@ -58,21 +59,4 @@ class StationarySet(Dataset):
         
         return [(taus2, ad, ade, ns, label)]
     
-    @staticmethod
-    def plot_adev(params_arr, plot_param=""):
-        ADev_fig,ADev_ax = plt.subplots(figsize=(12,5))
-        for taus2,ad,ade,_,label in params_arr:
-            ADev_ax.errorbar(taus2, ad, yerr=ade, label=label)
-        ADev_ax.set_xscale("log")
-        ADev_ax.set_yscale("log")
-        ADev_ax.set_xlabel('Tau [s]')
-        ADev_ax.set_ylabel('Allan Deviation'.format(units))
-        ADev_ax.set_title('Allan Deviation | {:s}'.format(plot_param))
-        ADev_ax.grid(True)
-        #ADev_ax.legend(loc='upper left')
-        #ADev_ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        ADev_ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=2)
-        ADev_fig.tight_layout()
-        display(ADev_fig); plt.close(ADev_fig)
-        return ADev_fig
-        #return
+    

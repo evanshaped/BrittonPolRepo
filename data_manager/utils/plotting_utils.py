@@ -180,6 +180,26 @@ def ptr_walk_hist_double(ds_switch, fig, ax, color, time_range=None, bins=150):
 
     return (ds_switch.title, time_str, popt, perr)
 
+### Original plot_adev function from StationarySet class
+### Not really used any more
+def plot_adev(params_arr, plot_param=""):
+    ADev_fig,ADev_ax = plt.subplots(figsize=(12,5))
+    for taus2,ad,ade,_,label in params_arr:
+        ADev_ax.errorbar(taus2, ad, yerr=ade, label=label)
+    ADev_ax.set_xscale("log")
+    ADev_ax.set_yscale("log")
+    ADev_ax.set_xlabel('Tau [s]')
+    ADev_ax.set_ylabel('Allan Deviation'.format(units))
+    ADev_ax.set_title('Allan Deviation | {:s}'.format(plot_param))
+    ADev_ax.grid(True)
+    #ADev_ax.legend(loc='upper left')
+    #ADev_ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ADev_ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=2)
+    ADev_fig.tight_layout()
+    display(ADev_fig); plt.close(ADev_fig)
+    return ADev_fig
+    #return
+
 ### Plots adev plots on same plot
 ### params_arr is array of tuples, one tuple for each allan deviation plot
 ### Each tuple is: (averaging_times, allan_dev, allan_dev_error, number_of_samples, plot_label)
