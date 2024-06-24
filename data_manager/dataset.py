@@ -37,20 +37,20 @@ class Dataset:
             self.basic_sample_rate, self.op_mode_period, self.op_mode_FFT_num = pax_data_results
         
         self.num_points = self.df.shape[0]
-        self.time_elapsed = df['TimeElapsed'][self.num_points-1]
+        self.time_elapsed = self.df['TimeElapsed'][self.num_points-1]
         
-        self.mintime = df.loc[0, 'TimeElapsed']
-        self.maxtime = df.loc[df.shape[0]-1, 'TimeElapsed']
+        self.mintime = self.df.loc[0, 'TimeElapsed']
+        self.maxtime = self.df.loc[self.df.shape[0]-1, 'TimeElapsed']
         print('Time range: min={}, max={}'.format(self.mintime, self.maxtime))
         
-        self.nominal_sample_rate = basic_sample_rate / (2*op_mode_period)
-        self.avg_sample_rate = 1/(df['TimeDiff'][1:].mean())   # See rate_hist for why this code
+        self.nominal_sample_rate = self.basic_sample_rate / (2*self.op_mode_period)
+        self.avg_sample_rate = 1/(self.df['TimeDiff'][1:].mean())   # See plot_tbs_hist for why this code
     
     
     ### Generate histogram of time differences
-    def rate_hist(self, log=True, bins=50, xmax=None):
+    def plot_tbs_hist(self, log=True, bins=50, xmax=None):
         """
-        **Dataset.rate_hist(log=True, bins=50, xmax=None)**
+        **Dataset.plot_tbs_hist(log=True, bins=50, xmax=None)**
         <br>Visualize the consistency of the PAX's measurement rate. Generate and plot the histogram of time differences between subsequent points.
         
         **Parameters**
