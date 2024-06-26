@@ -128,7 +128,8 @@ class SwitchSet():
         timedif_avg = timedif.mean()   # Actual time dif (avg of all time diffs)
         timedif_std = timedif.std()   # STD of time diffs
         ax.axvline(x=timedif_avg, color='blue', linestyle='--')   # Indicate actual time dif
-        ax.hlines(1, timedif_avg, timedif_avg+timedif_std, color='purple', lw=2)   # Indicate STD
+        ypos = math_utils.get_aesthetic_ypos(ax.get_ylim(), log)
+        ax.hlines(ypos, timedif_avg, timedif_avg+timedif_std, color='purple', lw=2)   # Indicate STD
         
         # Print statistics
         lines = [("Averaging Periods = {:.1f} ".format(self.op_mode_period), 'black'),
@@ -249,10 +250,10 @@ class SwitchSet():
                     plot_param_avg_str = plot_param+"Avg"
                     if plot_avg_std:
                         plot_param_std_str = plot_param+"Std"
-                        ZI_ax.errorbar(self.signal_1_df['EstTime'],self.signal_1_df[plot_param_avg_str],yerr=self.signal_1_df[plot_param_std_str],label=plot_param+" 1",linewidth=1,marker='o',markersize=3,color='orange')
+                        ZI_ax.errorbar(self.signal_1_df['EstTime'],self.signal_1_df[plot_param_avg_str],yerr=self.signal_1_df[plot_param_std_str],label=plot_param+" 1",linewidth=1,marker='o',markersize=3,color='teal')
                         ZI_ax.errorbar(self.signal_2_df['EstTime'],self.signal_2_df[plot_param_avg_str],yerr=self.signal_2_df[plot_param_std_str],label=plot_param+" 2",linewidth=1,marker='o',markersize=3,color='green')
                     else:
-                        ZI_ax.plot(self.signal_1_df['EstTime'],dataframe_management_utils.transfer_value_units(self.signal_1_df[plot_param_avg_str]),label=plot_param+" 1",linewidth=1,marker='o',markersize=3,color='orange')
+                        ZI_ax.plot(self.signal_1_df['EstTime'],dataframe_management_utils.transfer_value_units(self.signal_1_df[plot_param_avg_str]),label=plot_param+" 1",linewidth=1,marker='o',markersize=3,color='teal')
                         ZI_ax.plot(self.signal_2_df['EstTime'],dataframe_management_utils.transfer_value_units(self.signal_2_df[plot_param_avg_str]),label=plot_param+" 2",linewidth=1,marker='o',markersize=3,color='green')
 
             display(ZI_fig); plt.close(ZI_fig)
@@ -277,7 +278,7 @@ class SwitchSet():
                 if self.stokes_ptf_df is not None and p not in self.stokes_ptf_df.columns:
                     raise KeyError('Parameter \'{:s}\' does not exist'.format(p))
                 if self.stokes_ptf_df is None:
-                    raise KeyError('ptf not yet calculated! (or parameter \'{:s}\' doesn exist)'.format(p))
+                    raise KeyError('ptf not yet calculated!'.format(p))
         
         # sample_range should be of the form (sample_start, sample_end) if a smaller range is desired
         # if sample_start or sample_end are None themselves, they will be filled in
@@ -363,11 +364,11 @@ class SwitchSet():
         
         # If requested, we'll also plot the smaller sample range
         alpha=0.8 # Temporarily 0.5, for getting good looking plots for 407 report; can be switched back to 1.0
-        markersize=0.5 # was 0.8
+        markersize=0.8 # was 0.8
         linestyle_1='-'
         linestyle_2='--'
-        linewidth=0.6
-        marker='*'
+        linewidth=1.0
+        marker='o'
         if sample_range is not None:
             # Zoomed In plot 
             ZI_fig, ZI_ax = plt.subplots(figsize=(12,3))

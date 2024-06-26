@@ -132,3 +132,12 @@ def first_stokes(signal_1_df, signal_2_df):
     signal_1_stokes = [signal_1_df[param][0] for param in ['S1Avg','S2Avg','S3Avg']]
     signal_2_stokes = [signal_2_df[param][0] for param in ['S1Avg','S2Avg','S3Avg']]
     return signal_1_stokes, signal_2_stokes
+
+def get_aesthetic_ypos(ylim, log):
+    ymin, ymax = ylim
+    height = 0.05
+    if log:
+        # Calculate the position one fifth of the way up the y-axis on a logarithmic scale
+        return np.exp(np.log(ymin) + (np.log(ymax) - np.log(ymin)) * height)
+    else:
+        return ymin + (ymax - ymin) * height
