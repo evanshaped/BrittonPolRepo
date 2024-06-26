@@ -1,26 +1,23 @@
 # Polarization Drift Data Processing
 
 ## Introduction
-> The Polarization Drift Project at UMD's Britton Laboratory aims to quantify noise at various timescales within a 27km burried fiber optic cable, with the hope of making polarization-drift-correction more efficient for quantum networking and polarization-based communication schemes.
-> Polarization data was recorded with the Thorlabs PAX1000 digital polarimeter. Measurements from this polarimeter tended to be [spaced non-uniformly in time](https://github.com/evanshaped/PAX-rate-visualization), complicating data analysis and making automatic data processing highly difficult.
-> This repository contains programmatic tools written in python to pre-process and visualize PAX data, with some preliminary analysis functionality.
+The Polarization Drift Project at UMD's Britton Laboratory aims to quantify noise at various timescales within a 27km burried fiber optic cable, with the hope of making polarization-drift-correction more efficient for quantum networking and polarization-based communication schemes.
 
-## Screenshots
-Include a few screenshots of the most important parts of your project or a GIF showing the project in action. This helps visualize the product.
-![Dashboard](url-to-image)
-![Login Page](url-to-image)
+Processing data for analysis was made highly difficult by:
+1) The use of the Thorlabs PAX1000 digital polarimeter (whose measurements tended to be spaced non-uniformly in time)
+2) The use of a single PAX to measure two time-alternating Polarization signals (we had to distinguish between real data and noise which was recorded while the signals were between transitions)
 
-## Installation
-Instructions on setting up the project locally:
-```sh
-# Clone the repository
-git clone https://github.com/yourusername/yourproject.git
+This repository contains python tools to process PAX data and distinguish between real data and noise. It can also visualize and perform preliminary statistical analysis of the data.
 
-# Navigate to the project directory
-cd yourproject
+## Overview of tool usage
+### Incoming data
+States of Polarization (SOPs) live on a unit sphere (the Poincare Sphere), and are typically parametrized by three normalized [Stokes Parameters](https://en.wikipedia.org/wiki/Stokes_parameters), s<sub>1</sub>, s<sub>2</sub>, and s<sub>3</sub>. The following examples plot one or multiple of these quantities over time.
 
-# Install dependencies
-npm install
+Below is a section of raw Stokes data, taken when measuring two time-alternating SOPs as we do in our experiment (note the "switching" between the two SOPs).
 
-# Start the server
-python app.py
+![Raw PAX data](screenshots/image1)
+
+The "Time Between Samples" (TBS) is highly inconsistent, and occasionally we suffer exceedingly large lags between samples (one occurence is shown above). This poor performance is not specific to our experiment or polarimeter; [another](https://github.com/evanshaped/PAX-rate-visualization) github repository gives PAX users the tools to quantify just how poor the performance of their polarimeter is by visualizing the TBS distribution.
+
+### Identifying switch times
+The code first 
