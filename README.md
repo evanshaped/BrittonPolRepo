@@ -1,4 +1,4 @@
-# Polarization Drift Data Processing
+# Polarization Drift Project - Data Processing Resources
 
 ## Introduction
 The Polarization Drift Project at UMD's Britton Laboratory aims to quantify noise at various timescales within a 27km burried fiber optic cable, with the hope of making polarization-drift-correction more efficient for quantum networking and polarization-based communication schemes.
@@ -13,7 +13,7 @@ This repository contains python tools to process PAX data and distinguish betwee
 ### Incoming data
 States of Polarization (SOPs) live on a unit sphere (the Poincare Sphere), and are typically parametrized by three normalized [Stokes Parameters](https://en.wikipedia.org/wiki/Stokes_parameters), s<sub>1</sub>, s<sub>2</sub>, and s<sub>3</sub>. The following examples plot one or multiple of these quantities over time.
 
-Below is a section of raw Stokes data, taken when measuring two time-alternating SOPs as we do in our experiment (note the "switching" between the two SOPs).
+Below is a section of raw PAX data, taken when measuring two time-alternating SOPs as we do in our experiment (note the "switching" between the two SOPs). The goal is to differentiate between the two SOPs automatically.
 
 ![Raw PAX data](screenshots/image1)
 
